@@ -9,6 +9,7 @@ const dotenv = require('dotenv');
 
 // Import our task routes
 const taskRoutes = require('./routes/taskRoutes');
+const authRoutes = require('./routes/authRoutes');
 
 dotenv.config();
 
@@ -26,6 +27,7 @@ app.get('/', (req, res) => {
 
 // 🔗 LINK OUR TASK API ROUTES HERE
 app.use('/api/tasks', taskRoutes);
+app.use('/api/auth', authRoutes);
 
 const dbURI = process.env.MONGO_URI;
 

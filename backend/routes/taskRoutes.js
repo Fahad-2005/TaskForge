@@ -33,4 +33,24 @@ router.post('/', async (req, res) => {
   }
 });
 
+// 3. UPDATE AN EXISTING TASK STATUS (Update)
+// URL: http://localhost:5000/api/tasks/:id
+router.put('/:id', async (req, res) => {
+  try {
+    const { status } = req.body;
+    
+    // Find the task by its MongoDB unique ID and update its pipeline column field
+    const updatedTask = await Task.findByIdAndUpdate(
+      req.params.id,
+      { status },
+      { new: true } // Tells MongoDB to return the updated object back to the client
+    );
+
+    if (!updatedTask) return res.status(404).json({ message: 'Task not found' });
+    res.status(200).json(updatedTask);
+  } catch (error) {
+    res.status(400).json({ message: 'Error updating task status', error: error.message });
+  }
+});
+
 module.exports = router;
