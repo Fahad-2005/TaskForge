@@ -7,7 +7,9 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const dotenv = require('dotenv');
 
-// Load environment variables
+// Import our task routes
+const taskRoutes = require('./routes/taskRoutes');
+
 dotenv.config();
 
 const app = express();
@@ -17,10 +19,13 @@ const PORT = process.env.PORT || 5000;
 app.use(cors());
 app.use(express.json());
 
-// Base Route
+// Base Check Route
 app.get('/', (req, res) => {
   res.send('TaskForge Backend API is running smoothly!');
 });
+
+// 🔗 LINK OUR TASK API ROUTES HERE
+app.use('/api/tasks', taskRoutes);
 
 const dbURI = process.env.MONGO_URI;
 
