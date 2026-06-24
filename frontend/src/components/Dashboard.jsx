@@ -4,7 +4,11 @@ import './Dashboard.css';
 function Dashboard({ toggleSidebar }) {
   const [activeView, setActiveView] = useState('board');
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [tasks, setTasks] = useState([]); // Holds our tasks array from the database
+  const [tasks, setTasks] = useState([]);
+
+  // 🔍 Search & Filtering States
+  const [searchQuery, setSearchQuery] = useState('');
+  const [priorityFilter, setPriorityFilter] = useState('All');
 
   // Form Field Trackers
   const [title, setTitle] = useState('');
@@ -13,14 +17,12 @@ function Dashboard({ toggleSidebar }) {
   const [priority, setPriority] = useState('Medium');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // 📥 READ: Fetch tasks from database as soon as dashboard mounts
+  // FETCH tasks from database
   const fetchTasks = async () => {
     try {
       const response = await fetch('http://localhost:5000/api/tasks');
       const data = await response.json();
-      if (response.ok) {
-        setTasks(data);
-      }
+      if (response.ok) setTasks(data);
     } catch (error) {
       console.error('Error fetching database data:', error);
     }
@@ -30,24 +32,18 @@ function Dashboard({ toggleSidebar }) {
     fetchTasks();
   }, []);
 
-  // 📤 WRITE: Create a new task and append it dynamically
+  // CREATE task handler
   const handleCreateTask = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
-
     try {
       const response = await fetch('http://localhost:5000/api/tasks', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ title, description, status, priority }),
       });
-
       if (response.ok) {
-        // Clear fields, hide modal, and silently refresh dataset from cloud
-        setTitle('');
-        setDescription('');
-        setStatus('To Do');
-        setPriority('Medium');
+        setTitle(''); setDescription(''); setStatus('To Do'); setPriority('Medium');
         setIsModalOpen(false);
         fetchTasks(); 
       }
@@ -58,7 +54,7 @@ function Dashboard({ toggleSidebar }) {
     }
   };
 
-  // 🔄 UPDATE: Toggle column assignment on an active task card
+  // UPDATE task status handler
   const handleUpdateStatus = async (taskId, newStatus) => {
     try {
       const response = await fetch(`http://localhost:5000/api/tasks/${taskId}`, {
@@ -66,17 +62,23 @@ function Dashboard({ toggleSidebar }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: newStatus }),
       });
-
-      if (response.ok) {
-        // Optimistically reload UI items directly out of database records
-        fetchTasks();
-      }
+      if (response.ok) fetchTasks();
     } catch (error) {
       console.error('Error shifting card pipeline state:', error);
     }
   };
 
-  // Helper mapping to attach border highlights to cards depending on priority tiers
+  // 🔥 PROCESS DYNAMIC FILTERS LIVE
+  const filteredTasks = tasks.filter((task) => {
+    const matchesSearch = 
+      task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      task.description.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    const matchesPriority = priorityFilter === 'All' || task.priority === priorityFilter;
+
+    return matchesSearch && matchesPriority;
+  });
+
   const getPriorityBorder = (level) => {
     if (level === 'Urgent') return '#ef4444';
     if (level === 'High') return '#f97316';
@@ -90,7 +92,29 @@ function Dashboard({ toggleSidebar }) {
       <div className="top-bar">
         <button className="menu-toggle-btn" onClick={toggleSidebar}>☰</button>
 
-        <div className="view-switcher">
+        {/* 🔍 LIVE FILTER BAR */}
+        <div className="filter-bar">
+          <input 
+            type="text" 
+            className="search-input" 
+            placeholder="🔍 Search tasks..." 
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+          <select 
+            className="priority-filter-select"
+            value={priorityFilter}
+            onChange={(e) => setPriorityFilter(e.target.value)}
+          >
+            <option value="All">All Priorities</option>
+            <option value="Low">Low</option>
+            <option value="Medium">Medium</option>
+            <option value="High">High</option>
+            <option value="Urgent">Urgent</option>
+          </select>
+        </div>
+
+        <div className="view-switcher" style={{ marginLeft: '16px' }}>
           <button onClick={() => setActiveView('board')} className="view-btn" style={{ backgroundColor: activeView === 'board' ? '#fff' : 'transparent', color: activeView === 'board' ? '#1e293b' : '#64748b' }}>📋 Board View</button>
           <button onClick={() => setActiveView('list')} className="view-btn" style={{ backgroundColor: activeView === 'list' ? '#fff' : 'transparent', color: activeView === 'list' ? '#1e293b' : '#64748b' }}>☰ List View</button>
         </div>
@@ -103,8 +127,8 @@ function Dashboard({ toggleSidebar }) {
         {activeView === 'board' ? (
           <div className="kanban-grid">
             {['To Do', 'In Progress', 'In Review', 'Complete'].map((columnTitle) => {
-              // Filter database array down to items matching this column pipeline criteria
-              const columnTasks = tasks.filter(t => t.status === columnTitle);
+              // Read from the filtered tasks pool instead of the raw array
+              const columnTasks = filteredTasks.filter(t => t.status === columnTitle);
 
               return (
                 <div key={columnTitle} className="kanban-column">
@@ -115,17 +139,14 @@ function Dashboard({ toggleSidebar }) {
                     </span>
                   </div>
 
-                  {/* Task Cards Container Area */}
                   <div style={{ flex: 1, overflowY: 'auto' }}>
                     {columnTasks.length === 0 ? (
-                      <div className="task-dropzone" style={{ height: '80px', border: '2px dashed #cbd5e1', color: '#94a3b8' }}>Empty</div>
+                      <div className="task-dropzone" style={{ height: '80px', border: '2px dashed #cbd5e1', color: '#94a3b8' }}>No Tasks</div>
                     ) : (
                       columnTasks.map((task) => (
                         <div key={task._id} className="task-card" style={{ borderLeftColor: getPriorityBorder(task.priority) }}>
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                             <span className={`badge badge-${task.priority.toLowerCase()}`}>{task.priority}</span>
-                            
-                            {/* Quick Action Selector to Update Columns */}
                             <select 
                               className="status-select-inline" 
                               value={task.status} 
@@ -137,7 +158,6 @@ function Dashboard({ toggleSidebar }) {
                               <option value="Complete">Complete</option>
                             </select>
                           </div>
-
                           <h4>{task.title}</h4>
                           {task.description && <p>{task.description}</p>}
                         </div>
@@ -151,14 +171,18 @@ function Dashboard({ toggleSidebar }) {
         ) : (
           /* List View Representation Layout */
           <div style={{ backgroundColor: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0', padding: '24px' }}>
-            <h4 style={{ margin: '0 0 16px 0', color: '#1e293b' }}>Workspace Grid View ({tasks.length} total tasks)</h4>
+            <h4 style={{ margin: '0 0 16px 0', color: '#1e293b' }}>Workspace Grid View ({filteredTasks.length} shown)</h4>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              {tasks.map(t => (
-                <div key={t._id} style={{ display: 'flex', justifyContent: 'space-between', padding: '12px', borderBottom: '1px solid #f1f5f9', fontSize: '14px' }}>
-                  <span style={{ fontWeight: '600', color: '#334155' }}>{t.title}</span>
-                  <span style={{ color: '#64748b' }}>{t.status}</span>
-                </div>
-              ))}
+              {filteredTasks.length === 0 ? (
+                <p style={{ fontSize: '14px', color: '#94a3b8' }}>No tasks match your search criteria.</p>
+              ) : (
+                filteredTasks.map(t => (
+                  <div key={t._id} style={{ display: 'flex', justifyContent: 'space-between', padding: '12px', borderBottom: '1px solid #f1f5f9', fontSize: '14px' }}>
+                    <span style={{ fontWeight: '600', color: '#334155' }}>{t.title}</span>
+                    <span style={{ color: '#64748b' }}>{t.status}</span>
+                  </div>
+                ))
+              )}
             </div>
           </div>
         )}
