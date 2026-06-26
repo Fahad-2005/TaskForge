@@ -20,6 +20,16 @@ const TaskSchema = new mongoose.Schema({
     enum: ['Low', 'Medium', 'High', 'Urgent'],
     default: 'Medium'
   },
+  workspace: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Workspace', // Every task MUST belong to a specific workspace
+    required: true
+  },
+  assignedTo: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User', // Optional field tracking which team member is doing the work
+    default: null
+  },
   createdAt: {
     type: Date,
     default: Date.now
