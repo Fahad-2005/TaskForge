@@ -22,6 +22,27 @@ router.post('/', async (req, res) => {
   }
 });
 
+// 🏢 3. GET WORKSPACES FOR A SPECIFIC USER (Scoped Filter)
+// URL: http://localhost:5000/api/workspaces/user/:userId
+router.get('/user/:userId', async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    // Find workspaces where the user is the owner
+    const owned = await Workspace.find({ owner: userId });
+
+    // Find workspaces where the user is a member BUT NOT the owner
+    const joined = await Workspace.find({
+      members: userId,
+      owner: { $ne: userId } // $ne means "not equal to"
+    });
+
+    res.status(200).json({ owned, joined });
+  } catch (error) {
+    res.status(500).json({ message: 'Error loading filtered workspaces', error: error.message });
+  }
+});
+
 // ✉️ 2. INVITE A USER TO WORKSPACE BY EMAIL
 // URL: http://localhost:5000/api/workspaces/:workspaceId/invite
 router.post('/:workspaceId/invite', async (req, res) => {

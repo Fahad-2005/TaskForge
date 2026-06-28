@@ -323,3 +323,61 @@
   cursor: pointer;
   outline: none;
 }
+/* Collaborative Workspace Bar */
+.workspace-banner {
+  background-color: #ffffff;
+  border-bottom: 1px solid #e2e8f0;
+  padding: 12px 32px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.workspace-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.workspace-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #1e293b;
+  margin: 0;
+}
+
+.invite-form {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.invite-input {
+  padding: 8px 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  font-size: 13px;
+  outline: none;
+  width: 220px;
+  transition: border-color 0.2s;
+}
+
+.invite-input:focus {
+  border-color: #4f46e5;
+}
+
+.invite-btn {
+  background-color: #10b981;
+  color: #fff;
+  border: none;
+  padding: 8px 14px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.invite-btn:hover {
+  background-color: #059669;
+}
