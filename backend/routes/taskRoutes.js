@@ -15,21 +15,30 @@ router.get('/', async (req, res) => {
 
 // 2. CREATE A NEW TASK (Write)
 // URL: http://localhost:5000/api/tasks
+
 router.post('/', async (req, res) => {
   try {
-    const { title, description, status, priority } = req.body;
-    
+    const { title, description, status, priority, workspace, assignedTo } = req.body;
+
+    // Create the task object
     const newTask = new Task({
       title,
       description,
       status,
-      priority
+      priority,
+      workspace, // Must be a valid MongoDB ObjectId string from activeWorkspace
+      assignedTo: assignedTo && assignedTo.trim() !== "" ? assignedTo : null // Clear empty strings
     });
 
-    const savedTask = await newTask.save(); // Save it to MongoDB Atlas
+    const savedTask = await newTask.save();
     res.status(201).json(savedTask);
   } catch (error) {
-    res.status(400).json({ message: 'Error creating task', error: error.message });
+    // 🚨 This prints the real reason (e.g., CastError, ValidationError) in your server terminal
+    console.error("Mongoose Task Error:", error); 
+    
+    res.status(400).json({ 
+      message: error.message || 'Database validation failed' 
+    });
   }
 });
 

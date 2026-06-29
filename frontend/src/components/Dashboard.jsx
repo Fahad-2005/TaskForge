@@ -6,27 +6,33 @@ function Dashboard({ toggleSidebar, activeWorkspace }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [tasks, setTasks] = useState([]);
 
-  // Search & Filtering States
+  // Search, Filter, and Invite States
   const [searchQuery, setSearchQuery] = useState('');
   const [priorityFilter, setPriorityFilter] = useState('All');
-
-  // Teammate Invite State
   const [inviteEmail, setInviteEmail] = useState('');
   const [isInviting, setIsInviting] = useState(false);
+
+  // 📝 Card Expand/Collapse Tracker
+  const [expandedTaskId, setExpandedTaskId] = useState(null);
 
   // Form Field Trackers
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [status, setStatus] = useState('To Do');
   const [priority, setPriority] = useState('Medium');
+  const [assignedTo, setAssignedTo] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // FETCH Scoped Tasks based on activeWorkspace selection
+  // Get current logged-in user data
+  const currentUser = JSON.parse(localStorage.getItem('user')) || {};
+  const currentUserId = currentUser.id || currentUser._id;
+
+  // Check if current user is the actual administrator/owner of this workspace
+  const isOwner = activeWorkspace?.owner === currentUserId;
+
   const fetchTasks = async () => {
     if (!activeWorkspace?._id) return;
     try {
-      // Fetching all tasks, then filtering by workspace on the client side
-      // (Later we can optimize our backend route to query: Task.find({ workspace: workspaceId }))
       const response = await fetch('http://localhost:5000/api/tasks');
       const data = await response.json();
       if (response.ok) {
@@ -40,7 +46,7 @@ function Dashboard({ toggleSidebar, activeWorkspace }) {
 
   useEffect(() => {
     fetchTasks();
-  }, [activeWorkspace]); // Re-fetch data instantly when user selects another workspace!
+  }, [activeWorkspace]);
 
   const handleInviteUser = async (e) => {
     e.preventDefault();
@@ -65,21 +71,39 @@ function Dashboard({ toggleSidebar, activeWorkspace }) {
 
   const handleCreateTask = async (e) => {
     e.preventDefault();
-    if (!activeWorkspace?._id) return alert('Please select or create a workspace first!');
+    if (!activeWorkspace?._id) return alert('Please select a workspace first!');
     setIsSubmitting(true);
+    
     try {
       const response = await fetch('http://localhost:5000/api/tasks', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title, description, status, priority, workspace: activeWorkspace._id }),
+        body: JSON.stringify({ 
+          title, 
+          description, 
+          status, 
+          priority, 
+          workspace: activeWorkspace._id,
+          assignedTo: assignedTo || null 
+        }),
       });
-      if (response.ok) {
-        setTitle(''); setDescription(''); setStatus('To Do'); setPriority('Medium');
-        setIsModalOpen(false);
-        fetchTasks(); 
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Server rejected task creation');
       }
+
+      setTitle(''); 
+      setDescription(''); 
+      setStatus('To Do'); 
+      setPriority('Medium'); 
+      setAssignedTo('');
+      setIsModalOpen(false);
+      fetchTasks(); 
+
     } catch (error) {
-      alert('Error saving task: ' + error.message);
+      alert('❌ Error creating task: ' + error.message);
     } finally {
       setIsSubmitting(false);
     }
@@ -130,19 +154,24 @@ function Dashboard({ toggleSidebar, activeWorkspace }) {
           <h3 className="workspace-title">{activeWorkspace.name}</h3>
         </div>
         
-        <form onSubmit={handleInviteUser} className="invite-form">
-          <input 
-            type="email" 
-            className="invite-input" 
-            placeholder="Invite member by email..." 
-            value={inviteEmail}
-            onChange={(e) => setInviteEmail(e.target.value)}
-            required
-          />
-          <button type="submit" className="invite-btn" disabled={isInviting}>
-            {isInviting ? 'Adding...' : '+ Invite'}
-          </button>
-        </form>
+        {/* Guardrail: Only render the invitation form if the user is the owner */}
+        {isOwner ? (
+          <form onSubmit={handleInviteUser} className="invite-form">
+            <input 
+              type="email" 
+              className="invite-input" 
+              placeholder="Invite member by email..." 
+              value={inviteEmail}
+              onChange={(e) => setInviteEmail(e.target.value)}
+              required
+            />
+            <button type="submit" className="invite-btn" disabled={isInviting}>
+              {isInviting ? 'Adding...' : '+ Invite'}
+            </button>
+          </form>
+        ) : (
+          <span style={{ fontSize: '12px', color: '#64748b', fontStyle: 'italic' }}>Read-only Member View</span>
+        )}
       </div>
 
       {/* Top Application Ribbon */}
@@ -176,7 +205,7 @@ function Dashboard({ toggleSidebar, activeWorkspace }) {
               const columnTasks = filteredTasks.filter(t => t.status === columnTitle);
 
               return (
-                <div key={columnTitle} className="kanban-column" style={{ maxH: 'calc(100vh - 200px)' }}>
+                <div key={columnTitle} className="kanban-column">
                   <div className="column-header">
                     <span style={{ fontWeight: '700', fontSize: '14px', color: '#334155' }}>{columnTitle}</span>
                     <span style={{ backgroundColor: '#cbd5e1', padding: '2px 8px', borderRadius: '12px', fontSize: '11px', fontWeight: '700', color: '#475569' }}>
@@ -188,21 +217,51 @@ function Dashboard({ toggleSidebar, activeWorkspace }) {
                     {columnTasks.length === 0 ? (
                       <div className="task-dropzone" style={{ height: '80px', border: '2px dashed #cbd5e1', color: '#94a3b8' }}>No Tasks</div>
                     ) : (
-                      columnTasks.map((task) => (
-                        <div key={task._id} className="task-card" style={{ borderLeftColor: getPriorityBorder(task.priority) }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                            <span className={`badge badge-${task.priority.toLowerCase()}`}>{task.priority}</span>
-                            <select className="status-select-inline" value={task.status} onChange={(e) => handleUpdateStatus(task._id, e.target.value)}>
-                              <option value="To Do">To Do</option>
-                              <option value="In Progress">In Progress</option>
-                              <option value="In Review">In Review</option>
-                              <option value="Complete">Complete</option>
-                            </select>
+                      columnTasks.map((task) => {
+                        // Find the matching member profile out of the active workspace array
+                        const assigneeInfo = activeWorkspace?.members?.find(m => m._id === task.assignedTo);
+
+                        return (
+                          <div key={task._id} className="task-card" style={{ borderLeftColor: getPriorityBorder(task.priority) }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <span className={`badge badge-${task.priority.toLowerCase()}`}>{task.priority}</span>
+                                
+                                {/* 👤 Assignee Identity Tag */}
+                                {assigneeInfo ? (
+                                  <span style={{ fontSize: '11px', color: '#4f46e5', backgroundColor: '#e0e7ff', padding: '2px 6px', borderRadius: '4px', fontWeight: '600' }} title={assigneeInfo.email}>
+                                    👤 {assigneeInfo.name}
+                                  </span>
+                                ) : (
+                                  <span style={{ fontSize: '11px', color: '#94a3b8', fontStyle: 'italic' }}>Unassigned</span>
+                                )}
+                              </div>
+
+                              <select className="status-select-inline" value={task.status} onChange={(e) => handleUpdateStatus(task._id, e.target.value)}>
+                                <option value="To Do">To Do</option>
+                                <option value="In Progress">In Progress</option>
+                                <option value="In Review">In Review</option>
+                                <option value="Complete">Complete</option>
+                              </select>
+                            </div>
+
+                            {/* Clicking the title toggles the description container tray */}
+                            <h4 
+                              onClick={() => setExpandedTaskId(expandedTaskId === task._id ? null : task._id)}
+                              style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', userSelect: 'none' }}
+                            >
+                              <span>{expandedTaskId === task._id ? '▼' : '▶'}</span> {task.title}
+                            </h4>
+
+                            {/* 📝 Conditional Description Expansion Tray */}
+                            {expandedTaskId === task._id && task.description && (
+                              <div style={{ marginTop: '8px', padding: '10px', backgroundColor: '#f8fafc', borderRadius: '6px', borderLeft: '2px solid #e2e8f0' }}>
+                                <p style={{ margin: 0, fontSize: '12px', color: '#475569', whiteSpace: 'pre-wrap' }}>{task.description}</p>
+                              </div>
+                            )}
                           </div>
-                          <h4>{task.title}</h4>
-                          {task.description && <p>{task.description}</p>}
-                        </div>
-                      ))
+                        );
+                      })
                     )}
                   </div>
                 </div>
@@ -245,6 +304,7 @@ function Dashboard({ toggleSidebar, activeWorkspace }) {
                 <label>Description</label>
                 <textarea placeholder="Describe details..." rows="3" value={description} onChange={(e) => setDescription(e.target.value)} />
               </div>
+              
               <div style={{ display: 'flex', gap: '12px' }}>
                 <div style={{ flex: 1 }}>
                   <label>Status</label>
@@ -265,6 +325,20 @@ function Dashboard({ toggleSidebar, activeWorkspace }) {
                   </select>
                 </div>
               </div>
+
+              {/* 👥 ASSIGNEE SELECTION DROPDOWN */}
+              <div>
+                <label>Assign To Teammate</label>
+                <select value={assignedTo} onChange={(e) => setAssignedTo(e.target.value)}>
+                  <option value="">Unassigned (No one)</option>
+                  {activeWorkspace?.members?.map((member) => (
+                    <option key={member._id} value={member._id}>
+                      {member.name} ({member.email})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
               <div className="modal-actions">
                 <button type="button" className="cancel-btn" onClick={() => setIsModalOpen(false)}>Cancel</button>
                 <button type="submit" className="submit-task-btn" disabled={isSubmitting}>Create Task</button>
