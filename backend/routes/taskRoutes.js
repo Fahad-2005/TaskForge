@@ -46,19 +46,37 @@ router.post('/', async (req, res) => {
 // URL: http://localhost:5000/api/tasks/:id
 router.put('/:id', async (req, res) => {
   try {
-    const { status } = req.body;
-    
-    // Find the task by its MongoDB unique ID and update its pipeline column field
+    const { title, description, status, priority, assignedTo } = req.body;
+
     const updatedTask = await Task.findByIdAndUpdate(
       req.params.id,
-      { status },
-      { new: true } // Tells MongoDB to return the updated object back to the client
+      { 
+        title, 
+        description, 
+        status, 
+        priority, 
+        assignedTo: assignedTo && assignedTo.trim() !== "" ? assignedTo : null 
+      },
+      { new: true } // Returns the newly updated database document
     );
 
-    if (!updatedTask) return res.status(404).json({ message: 'Task not found' });
     res.status(200).json(updatedTask);
   } catch (error) {
-    res.status(400).json({ message: 'Error updating task status', error: error.message });
+    res.status(400).json({ message: 'Error updating task fields', error: error.message });
+  }
+});
+
+// 🗑️ 2. DELETE A TASK PERMANENTLY
+// URL: http://localhost:5000/api/tasks/:id
+router.delete('/:id', async (req, res) => {
+  try {
+    const deletedTask = await Task.findByIdAndDelete(req.params.id);
+    if (!deletedTask) {
+      return res.status(404).json({ message: 'Task not found' });
+    }
+    res.status(200).json({ message: 'Task removed successfully!' });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error deleting task', error: error.message });
   }
 });
 

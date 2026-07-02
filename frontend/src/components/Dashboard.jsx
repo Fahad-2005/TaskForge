@@ -12,10 +12,11 @@ function Dashboard({ toggleSidebar, activeWorkspace }) {
   const [inviteEmail, setInviteEmail] = useState('');
   const [isInviting, setIsInviting] = useState(false);
 
-  // 📝 Card Expand/Collapse Tracker
+  // Card Expand/Collapse Tracker
   const [expandedTaskId, setExpandedTaskId] = useState(null);
 
-  // Form Field Trackers
+  // Form Field Trackers (Dual-mode: Create & Edit)
+  const [editingTaskId, setEditingTaskId] = useState(null);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [status, setStatus] = useState('To Do');
@@ -23,11 +24,9 @@ function Dashboard({ toggleSidebar, activeWorkspace }) {
   const [assignedTo, setAssignedTo] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Get current logged-in user data
+  // User Profile Properties
   const currentUser = JSON.parse(localStorage.getItem('user')) || {};
   const currentUserId = currentUser.id || currentUser._id;
-
-  // Check if current user is the actual administrator/owner of this workspace
   const isOwner = activeWorkspace?.owner === currentUserId;
 
   const fetchTasks = async () => {
@@ -40,7 +39,7 @@ function Dashboard({ toggleSidebar, activeWorkspace }) {
         setTasks(scopedTasks);
       }
     } catch (error) {
-      console.error('Error fetching database data:', error);
+      console.error('Error fetching data:', error);
     }
   };
 
@@ -69,14 +68,21 @@ function Dashboard({ toggleSidebar, activeWorkspace }) {
     }
   };
 
-  const handleCreateTask = async (e) => {
+  // COMBINED CREATE AND UPDATE HANDLER
+  const handleSaveTask = async (e) => {
     e.preventDefault();
-    if (!activeWorkspace?._id) return alert('Please select a workspace first!');
+    if (!activeWorkspace?._id) return;
     setIsSubmitting(true);
-    
+
+    const url = editingTaskId 
+      ? `http://localhost:5000/api/tasks/${editingTaskId}` 
+      : 'http://localhost:5000/api/tasks';
+      
+    const method = editingTaskId ? 'PUT' : 'POST';
+
     try {
-      const response = await fetch('http://localhost:5000/api/tasks', {
-        method: 'POST',
+      const response = await fetch(url, {
+        method: method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           title, 
@@ -89,23 +95,51 @@ function Dashboard({ toggleSidebar, activeWorkspace }) {
       });
 
       const data = await response.json();
+      if (!response.ok) throw new Error(data.message || 'Server rejected request');
 
-      if (!response.ok) {
-        throw new Error(data.message || 'Server rejected task creation');
-      }
-
-      setTitle(''); 
-      setDescription(''); 
-      setStatus('To Do'); 
-      setPriority('Medium'); 
-      setAssignedTo('');
-      setIsModalOpen(false);
+      // Clear Form state completely
+      closeModal();
       fetchTasks(); 
-
     } catch (error) {
-      alert('❌ Error creating task: ' + error.message);
+      alert('❌ Task operation error: ' + error.message);
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  // INLINE TRIGGER: Loads existing task data directly into modal fields
+  const openEditModal = (task) => {
+    setEditingTaskId(task._id);
+    setTitle(task.title);
+    setDescription(task.description || '');
+    setStatus(task.status);
+    setPriority(task.priority);
+    setAssignedTo(task.assignedTo || '');
+    setIsModalOpen(true);
+  };
+
+  const closeModal = () => {
+    setEditingTaskId(null);
+    setTitle('');
+    setDescription('');
+    setStatus('To Do');
+    setPriority('Medium');
+    setAssignedTo('');
+    setIsModalOpen(false);
+  };
+
+  // PERMANENT TASK REMOVAL PIPELINE
+  const handleDeleteTask = async (taskId) => {
+    if (!window.confirm("Are you sure you want to delete this task completely?")) return;
+    try {
+      const response = await fetch(`http://localhost:5000/api/tasks/${taskId}`, { method: 'DELETE' });
+      if (response.ok) {
+        fetchTasks();
+      } else {
+        alert("Could not remove item from database container.");
+      }
+    } catch (error) {
+      console.error("Error executing task removal:", error);
     }
   };
 
@@ -118,7 +152,7 @@ function Dashboard({ toggleSidebar, activeWorkspace }) {
       });
       if (response.ok) fetchTasks();
     } catch (error) {
-      console.error('Error shifting card pipeline state:', error);
+      console.error('Error shifting pipeline state:', error);
     }
   };
 
@@ -135,6 +169,13 @@ function Dashboard({ toggleSidebar, activeWorkspace }) {
     if (level === 'High') return '#f97316';
     if (level === 'Medium') return '#f59e0b';
     return '#94a3b8';
+  };
+
+  // Simple string-to-color hashing fallback loop for avatar styling variety
+  const getAvatarColor = (name = 'A') => {
+    const colors = ['#4f46e5', '#06b6d4', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6'];
+    const charCode = name.charCodeAt(0) || 0;
+    return colors[charCode % colors.length];
   };
 
   if (!activeWorkspace) {
@@ -154,7 +195,6 @@ function Dashboard({ toggleSidebar, activeWorkspace }) {
           <h3 className="workspace-title">{activeWorkspace.name}</h3>
         </div>
         
-        {/* Guardrail: Only render the invitation form if the user is the owner */}
         {isOwner ? (
           <form onSubmit={handleInviteUser} className="invite-form">
             <input 
@@ -218,22 +258,27 @@ function Dashboard({ toggleSidebar, activeWorkspace }) {
                       <div className="task-dropzone" style={{ height: '80px', border: '2px dashed #cbd5e1', color: '#94a3b8' }}>No Tasks</div>
                     ) : (
                       columnTasks.map((task) => {
-                        // Find the matching member profile out of the active workspace array
                         const assigneeInfo = activeWorkspace?.members?.find(m => m._id === task.assignedTo);
 
                         return (
                           <div key={task._id} className="task-card" style={{ borderLeftColor: getPriorityBorder(task.priority) }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                 <span className={`badge badge-${task.priority.toLowerCase()}`}>{task.priority}</span>
                                 
-                                {/* 👤 Assignee Identity Tag */}
+                                {/* 👤 SLEEK VISUAL ASSIGNEE AVATAR */}
                                 {assigneeInfo ? (
-                                  <span style={{ fontSize: '11px', color: '#4f46e5', backgroundColor: '#e0e7ff', padding: '2px 6px', borderRadius: '4px', fontWeight: '600' }} title={assigneeInfo.email}>
-                                    👤 {assigneeInfo.name}
-                                  </span>
+                                  <div 
+                                    className="assignee-avatar" 
+                                    style={{ backgroundColor: getAvatarColor(assigneeInfo.name) }}
+                                    title={`Assigned to ${assigneeInfo.name} (${assigneeInfo.email})`}
+                                  >
+                                    {assigneeInfo.name.charAt(0)}
+                                  </div>
                                 ) : (
-                                  <span style={{ fontSize: '11px', color: '#94a3b8', fontStyle: 'italic' }}>Unassigned</span>
+                                  <div className="assignee-avatar" style={{ backgroundColor: '#cbd5e1', color: '#475569' }} title="Unassigned task">
+                                    -
+                                  </div>
                                 )}
                               </div>
 
@@ -245,7 +290,6 @@ function Dashboard({ toggleSidebar, activeWorkspace }) {
                               </select>
                             </div>
 
-                            {/* Clicking the title toggles the description container tray */}
                             <h4 
                               onClick={() => setExpandedTaskId(expandedTaskId === task._id ? null : task._id)}
                               style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', userSelect: 'none' }}
@@ -253,10 +297,17 @@ function Dashboard({ toggleSidebar, activeWorkspace }) {
                               <span>{expandedTaskId === task._id ? '▼' : '▶'}</span> {task.title}
                             </h4>
 
-                            {/* 📝 Conditional Description Expansion Tray */}
-                            {expandedTaskId === task._id && task.description && (
-                              <div style={{ marginTop: '8px', padding: '10px', backgroundColor: '#f8fafc', borderRadius: '6px', borderLeft: '2px solid #e2e8f0' }}>
-                                <p style={{ margin: 0, fontSize: '12px', color: '#475569', whiteSpace: 'pre-wrap' }}>{task.description}</p>
+                            {/* 📝 Expanded Tray carrying description, edit, and delete tools */}
+                            {expandedTaskId === task._id && (
+                              <div style={{ marginTop: '8px', padding: '12px', backgroundColor: '#f8fafc', borderRadius: '6px', borderLeft: '2px solid #e2e8f0' }}>
+                                <p style={{ margin: 0, fontSize: '12px', color: '#475569', whiteSpace: 'pre-wrap' }}>
+                                  {task.description || <span style={{ fontStyle: 'italic', color: '#94a3b8' }}>No description provided.</span>}
+                                </p>
+                                
+                                <div className="card-action-row">
+                                  <button onClick={() => openEditModal(task)} className="tray-btn edit-btn">✏️ Edit</button>
+                                  <button onClick={() => handleDeleteTask(task._id)} className="tray-btn delete-btn">🗑️ Delete</button>
+                                </div>
                               </div>
                             )}
                           </div>
@@ -287,15 +338,15 @@ function Dashboard({ toggleSidebar, activeWorkspace }) {
         )}
       </div>
 
-      {/* POP-UP MODAL */}
+      {/* DUAL PURPOSE CREATION / EDITING MODAL */}
       {isModalOpen && (
         <div className="modal-overlay">
           <div className="modal-card">
             <div className="modal-header">
-              <h3>Create New Task</h3>
-              <button className="close-modal-btn" onClick={() => setIsModalOpen(false)}>✕</button>
+              <h3>{editingTaskId ? '✏️ Edit Task Details' : '📋 Create New Task'}</h3>
+              <button className="close-modal-btn" onClick={closeModal}>✕</button>
             </div>
-            <form onSubmit={handleCreateTask} className="modal-form">
+            <form onSubmit={handleSaveTask} className="modal-form">
               <div>
                 <label>Task Title</label>
                 <input type="text" placeholder="e.g., Fix Layout Alignment" value={title} onChange={(e) => setTitle(e.target.value)} required />
@@ -326,7 +377,6 @@ function Dashboard({ toggleSidebar, activeWorkspace }) {
                 </div>
               </div>
 
-              {/* 👥 ASSIGNEE SELECTION DROPDOWN */}
               <div>
                 <label>Assign To Teammate</label>
                 <select value={assignedTo} onChange={(e) => setAssignedTo(e.target.value)}>
@@ -340,8 +390,10 @@ function Dashboard({ toggleSidebar, activeWorkspace }) {
               </div>
 
               <div className="modal-actions">
-                <button type="button" className="cancel-btn" onClick={() => setIsModalOpen(false)}>Cancel</button>
-                <button type="submit" className="submit-task-btn" disabled={isSubmitting}>Create Task</button>
+                <button type="button" className="cancel-btn" onClick={closeModal}>Cancel</button>
+                <button type="submit" className="submit-task-btn" disabled={isSubmitting}>
+                  {isSubmitting ? 'Saving...' : editingTaskId ? 'Save Changes' : 'Create Task'}
+                </button>
               </div>
             </form>
           </div>
