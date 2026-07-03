@@ -11,11 +11,13 @@ function App() {
   const [currentScreen, setCurrentScreen] = useState('home');
 
   // Multi-Workspace States
-  const [workspaces, setWorkspaces] = useState([]);
+  const [workspaces, setWorkspaces] = useState({ owned: [], joined: [] });
   const [activeWorkspace, setActiveWorkspace] = useState(null);
 
-  // Fetch workspaces for the logged-in user (Currently fetching all for testing setup)
- // Fetch workspaces matching ONLY the logged-in user profiles
+  // 📊 Global Tasks State for Live HomeHub Analytics
+  const [allTasks, setAllTasks] = useState([]);
+
+  // Fetch workspaces matching ONLY the logged-in user profiles
   const fetchWorkspaces = async () => {
     const currentUser = JSON.parse(localStorage.getItem('user'));
     if (!currentUser || (!currentUser.id && !currentUser._id)) return;
@@ -41,12 +43,27 @@ function App() {
     }
   };
 
+  // 📈 Fetch all global tasks for analytics extraction
+  const fetchAllUserTasks = async () => {
+    try {
+      const response = await fetch('http://localhost:5000/api/tasks');
+      if (response.ok) {
+        const data = await response.json();
+        setAllTasks(data);
+      }
+    } catch (error) {
+      console.error("Error loading global tasks for analytics:", error);
+    }
+  };
+
   useEffect(() => {
     if (isLoggedIn) {
       fetchWorkspaces();
+      fetchAllUserTasks(); // Hydrate task list immediately on login match
     } else {
       setWorkspaces({ owned: [], joined: [] });
       setActiveWorkspace(null);
+      setAllTasks([]);
     }
   }, [isLoggedIn]);
 
@@ -88,8 +105,9 @@ function App() {
         onCreateWorkspace={handleCreateWorkspace}
       />
 
+      {/* Connected dynamic data array tracking into your landing metrics dashboard */}
       {currentScreen === 'home' && (
-        <HomeHub changeSubScreen={setCurrentScreen} />
+        <HomeHub changeSubScreen={setCurrentScreen} tasks={allTasks} />
       )}
       
       {currentScreen === 'tasks' && (
