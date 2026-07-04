@@ -180,8 +180,12 @@ function Dashboard({ toggleSidebar, activeWorkspace }) {
 
   if (!activeWorkspace) {
     return (
-      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#f8fafc', color: '#64748b' }}>
-        <h3>Select or Create a Workspace from the Sidebar to start tracking tasks!</h3>
+      <div className="dashboard-container">
+        <div className="empty-state">
+          <div className="empty-state-icon">📁</div>
+          <h3 style={{ marginBottom: 8, color: 'var(--text-primary)' }}>No workspace selected</h3>
+          <p>Select or create a workspace from the sidebar to start tracking tasks.</p>
+        </div>
       </div>
     );
   }
@@ -191,7 +195,7 @@ function Dashboard({ toggleSidebar, activeWorkspace }) {
       {/* Collaborative Workspace Banner */}
       <div className="workspace-banner">
         <div className="workspace-info">
-          <span style={{ fontSize: '20px' }}>🏢</span>
+          <span className="workspace-badge">Active</span>
           <h3 className="workspace-title">{activeWorkspace.name}</h3>
         </div>
         
@@ -219,7 +223,7 @@ function Dashboard({ toggleSidebar, activeWorkspace }) {
         <button className="menu-toggle-btn" onClick={toggleSidebar}>☰</button>
 
         <div className="filter-bar">
-          <input type="text" className="search-input" placeholder="🔍 Search workspace tasks..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+          <input type="text" className="search-input" placeholder="Search workspace tasks..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
           <select className="priority-filter-select" value={priorityFilter} onChange={(e) => setPriorityFilter(e.target.value)}>
             <option value="All">All Priorities</option>
             <option value="Low">Low</option>
@@ -229,9 +233,9 @@ function Dashboard({ toggleSidebar, activeWorkspace }) {
           </select>
         </div>
 
-        <div className="view-switcher" style={{ marginLeft: '16px' }}>
-          <button onClick={() => setActiveView('board')} className="view-btn" style={{ backgroundColor: activeView === 'board' ? '#fff' : 'transparent', color: activeView === 'board' ? '#1e293b' : '#64748b' }}>📋 Board View</button>
-          <button onClick={() => setActiveView('list')} className="view-btn" style={{ backgroundColor: activeView === 'list' ? '#fff' : 'transparent', color: activeView === 'list' ? '#1e293b' : '#64748b' }}>☰ List View</button>
+        <div className="view-switcher">
+          <button type="button" onClick={() => setActiveView('board')} className={`view-btn ${activeView === 'board' ? 'active' : ''}`}>Board</button>
+          <button type="button" onClick={() => setActiveView('list')} className={`view-btn ${activeView === 'list' ? 'active' : ''}`}>List</button>
         </div>
 
         <button className="add-task-btn" onClick={() => setIsModalOpen(true)}>+ Add Task</button>
@@ -247,15 +251,13 @@ function Dashboard({ toggleSidebar, activeWorkspace }) {
               return (
                 <div key={columnTitle} className="kanban-column">
                   <div className="column-header">
-                    <span style={{ fontWeight: '700', fontSize: '14px', color: '#334155' }}>{columnTitle}</span>
-                    <span style={{ backgroundColor: '#cbd5e1', padding: '2px 8px', borderRadius: '12px', fontSize: '11px', fontWeight: '700', color: '#475569' }}>
-                      {columnTasks.length}
-                    </span>
+                    <span className="column-title">{columnTitle}</span>
+                    <span className="column-count">{columnTasks.length}</span>
                   </div>
 
                   <div style={{ flex: 1, overflowY: 'auto', minHeight: '150px' }}>
                     {columnTasks.length === 0 ? (
-                      <div className="task-dropzone" style={{ height: '80px', border: '2px dashed #cbd5e1', color: '#94a3b8' }}>No Tasks</div>
+                      <div className="task-dropzone">Drop tasks here</div>
                     ) : (
                       columnTasks.map((task) => {
                         const assigneeInfo = activeWorkspace?.members?.find(m => m._id === task.assignedTo);
@@ -299,14 +301,14 @@ function Dashboard({ toggleSidebar, activeWorkspace }) {
 
                             {/* 📝 Expanded Tray carrying description, edit, and delete tools */}
                             {expandedTaskId === task._id && (
-                              <div style={{ marginTop: '8px', padding: '12px', backgroundColor: '#f8fafc', borderRadius: '6px', borderLeft: '2px solid #e2e8f0' }}>
-                                <p style={{ margin: 0, fontSize: '12px', color: '#475569', whiteSpace: 'pre-wrap' }}>
-                                  {task.description || <span style={{ fontStyle: 'italic', color: '#94a3b8' }}>No description provided.</span>}
+                              <div className="task-expand-tray">
+                                <p className="task-expand-desc">
+                                  {task.description || <span className="task-no-desc">No description provided.</span>}
                                 </p>
                                 
                                 <div className="card-action-row">
-                                  <button onClick={() => openEditModal(task)} className="tray-btn edit-btn">✏️ Edit</button>
-                                  <button onClick={() => handleDeleteTask(task._id)} className="tray-btn delete-btn">🗑️ Delete</button>
+                                  <button type="button" onClick={() => openEditModal(task)} className="tray-btn edit-btn">Edit</button>
+                                  <button type="button" onClick={() => handleDeleteTask(task._id)} className="tray-btn delete-btn">Delete</button>
                                 </div>
                               </div>
                             )}
@@ -320,20 +322,30 @@ function Dashboard({ toggleSidebar, activeWorkspace }) {
             })}
           </div>
         ) : (
-          <div style={{ backgroundColor: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0', padding: '24px' }}>
-            <h4 style={{ margin: '0 0 16px 0', color: '#1e293b' }}>Workspace Grid View ({filteredTasks.length} shown)</h4>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              {filteredTasks.length === 0 ? (
-                <p style={{ fontSize: '14px', color: '#94a3b8' }}>No tasks found in this workspace.</p>
-              ) : (
-                filteredTasks.map(t => (
-                  <div key={t._id} style={{ display: 'flex', justifyContent: 'space-between', padding: '12px', borderBottom: '1px solid #f1f5f9', fontSize: '14px' }}>
-                    <span style={{ fontWeight: '600', color: '#334155' }}>{t.title}</span>
-                    <span style={{ color: '#64748b' }}>{t.status}</span>
-                  </div>
-                ))
-              )}
-            </div>
+          <div className="list-view-panel">
+            <h4 className="list-view-title">Workspace Grid View ({filteredTasks.length} shown)</h4>
+            {filteredTasks.length === 0 ? (
+              <p className="list-view-empty">No tasks found in this workspace.</p>
+            ) : (
+              <table className="list-table">
+                <thead>
+                  <tr>
+                    <th>Task</th>
+                    <th>Status</th>
+                    <th>Priority</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredTasks.map(t => (
+                    <tr key={t._id}>
+                      <td style={{ fontWeight: 600 }}>{t.title}</td>
+                      <td>{t.status}</td>
+                      <td><span className={`badge badge-${t.priority.toLowerCase()}`}>{t.priority}</span></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
           </div>
         )}
       </div>
@@ -343,8 +355,8 @@ function Dashboard({ toggleSidebar, activeWorkspace }) {
         <div className="modal-overlay">
           <div className="modal-card">
             <div className="modal-header">
-              <h3>{editingTaskId ? '✏️ Edit Task Details' : '📋 Create New Task'}</h3>
-              <button className="close-modal-btn" onClick={closeModal}>✕</button>
+              <h2>{editingTaskId ? 'Edit Task Details' : 'Create New Task'}</h2>
+              <button type="button" className="close-modal-btn" onClick={closeModal} aria-label="Close">✕</button>
             </div>
             <form onSubmit={handleSaveTask} className="modal-form">
               <div>
@@ -390,8 +402,8 @@ function Dashboard({ toggleSidebar, activeWorkspace }) {
               </div>
 
               <div className="modal-actions">
-                <button type="button" className="cancel-btn" onClick={closeModal}>Cancel</button>
-                <button type="submit" className="submit-task-btn" disabled={isSubmitting}>
+                <button type="button" className="modal-cancel-btn" onClick={closeModal}>Cancel</button>
+                <button type="submit" className="btn-primary modal-submit-btn" disabled={isSubmitting}>
                   {isSubmitting ? 'Saving...' : editingTaskId ? 'Save Changes' : 'Create Task'}
                 </button>
               </div>

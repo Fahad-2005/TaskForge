@@ -93,7 +93,7 @@ function App() {
   }
 
   return (
-    <div style={{ display: 'flex', height: '100vh', width: '100vw', margin: 0, overflow: 'hidden' }}>
+    <div className="app-shell">
       <Sidebar 
         onLogout={() => setIsLoggedIn(false)} 
         isOpen={sidebarOpen} 
