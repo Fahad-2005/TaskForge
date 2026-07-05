@@ -1,16 +1,18 @@
 import React, { useState } from 'react';
+import { useTheme } from '../context/ThemeContext';
 import './ProfileSettings.css';
 
 function ProfileSettings() {
   const currentUser = JSON.parse(localStorage.getItem('user')) || { name: 'Fahad', email: 'fahad@example.com' };
   const [name, setName] = useState(currentUser.name);
+  const { theme, setTheme, isDark } = useTheme();
 
   return (
     <div className="settings-page main-content">
       <div className="page-scroll">
         <header className="page-header">
           <h1 className="page-title">Account Settings</h1>
-          <p className="page-subtitle">Manage your personal TaskForge credentials and profile visibility.</p>
+          <p className="page-subtitle">Manage your personal TaskForge credentials, appearance, and profile visibility.</p>
         </header>
 
         <div className="settings-card">
@@ -41,6 +43,49 @@ function ProfileSettings() {
               Save Changes
             </button>
           </div>
+        </div>
+
+        <div className="settings-card settings-appearance-card">
+          <h3 className="settings-section-title">Appearance</h3>
+          <p className="settings-section-desc">Switch between light and dark themes across the entire workspace.</p>
+
+          <div className="theme-toggle-row">
+            <div className="theme-toggle-info">
+              <span className="theme-toggle-icon">{isDark ? '🌙' : '☀️'}</span>
+              <div>
+                <p className="theme-toggle-label">Theme Mode</p>
+                <p className="theme-toggle-value">{isDark ? 'Dark Slate' : 'Light'}</p>
+              </div>
+            </div>
+
+            <div className="theme-switcher">
+              <button
+                type="button"
+                className={`theme-option ${theme === 'light' ? 'active' : ''}`}
+                onClick={() => setTheme('light')}
+              >
+                Light
+              </button>
+              <button
+                type="button"
+                className={`theme-option ${theme === 'dark' ? 'active' : ''}`}
+                onClick={() => setTheme('dark')}
+              >
+                Dark
+              </button>
+            </div>
+          </div>
+
+          <label className="theme-switch" htmlFor="theme-toggle">
+            <span className="theme-switch-text">Enable dark mode</span>
+            <input
+              id="theme-toggle"
+              type="checkbox"
+              checked={isDark}
+              onChange={(e) => setTheme(e.target.checked ? 'dark' : 'light')}
+            />
+            <span className="theme-switch-slider" />
+          </label>
         </div>
       </div>
     </div>

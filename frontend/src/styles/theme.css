@@ -78,6 +78,9 @@ body {
   color: var(--text-primary);
   background: var(--bg-app);
   overflow: hidden;
+  transition:
+    background-color var(--duration-normal) ease,
+    color var(--duration-normal) ease;
 }
 
 #root {
@@ -227,3 +230,70 @@ body {
   0%, 100% { opacity: 0.4; }
   50% { opacity: 0.7; }
 }
+
+/* ==========================================================================
+   DARK MODE — slate (#0f172a) theme
+   ========================================================================== */
+
+[data-theme="dark"] {
+  --brand-gold-soft: rgba(245, 158, 11, 0.12);
+  --accent-soft: rgba(99, 102, 241, 0.18);
+  --accent-glow: rgba(99, 102, 241, 0.35);
+  --teal-soft: rgba(20, 184, 166, 0.15);
+
+  --bg-app: #0f172a;
+  --bg-surface: #1e293b;
+  --bg-elevated: rgba(30, 41, 59, 0.88);
+  --bg-sidebar: #0a0e17;
+  --bg-sidebar-hover: rgba(255, 255, 255, 0.05);
+  --bg-sidebar-active: rgba(99, 102, 241, 0.22);
+  --border-subtle: rgba(255, 255, 255, 0.06);
+  --border-medium: rgba(255, 255, 255, 0.1);
+
+  --text-primary: #f1f5f9;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+  --text-inverse: #f8fafc;
+  --text-sidebar: #cbd5e1;
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.2), 0 1px 3px rgba(0, 0, 0, 0.15);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.25), 0 2px 4px rgba(0, 0, 0, 0.15);
+  --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.35), 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+[data-theme="dark"] .main-content::before {
+  background:
+    radial-gradient(ellipse 80% 60% at 10% 0%, rgba(99, 102, 241, 0.12) 0%, transparent 55%),
+    radial-gradient(ellipse 60% 50% at 90% 10%, rgba(245, 158, 11, 0.08) 0%, transparent 50%),
+    radial-gradient(ellipse 50% 40% at 50% 100%, rgba(20, 184, 166, 0.08) 0%, transparent 50%);
+}
+
+[data-theme="dark"] ::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+[data-theme="dark"] ::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* Smooth theme transitions on key surfaces */
+.sidebar-container,
+.dashboard-container,
+.workspace-banner,
+.top-bar,
+.kanban-column,
+.task-card,
+.stat-card,
+.action-card,
+.settings-card,
+.calendar-grid-panel,
+.calendar-sidebar,
+.modal-card,
+.auth-card {
+  transition:
+    background-color var(--duration-normal) ease,
+    border-color var(--duration-normal) ease,
+    color var(--duration-normal) ease,
+    box-shadow var(--duration-normal) ease;
+}
+

@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import CalendarView from './CalendarView';
+import { toInputDateValue } from '../utils/dateHelpers';
 import './Dashboard.css';
 
 function Dashboard({ toggleSidebar, activeWorkspace }) {
@@ -22,6 +24,7 @@ function Dashboard({ toggleSidebar, activeWorkspace }) {
   const [status, setStatus] = useState('To Do');
   const [priority, setPriority] = useState('Medium');
   const [assignedTo, setAssignedTo] = useState('');
+  const [dueDate, setDueDate] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // User Profile Properties
@@ -90,7 +93,8 @@ function Dashboard({ toggleSidebar, activeWorkspace }) {
           status, 
           priority, 
           workspace: activeWorkspace._id,
-          assignedTo: assignedTo || null 
+          assignedTo: assignedTo || null,
+          dueDate: dueDate || null,
         }),
       });
 
@@ -115,6 +119,18 @@ function Dashboard({ toggleSidebar, activeWorkspace }) {
     setStatus(task.status);
     setPriority(task.priority);
     setAssignedTo(task.assignedTo || '');
+    setDueDate(toInputDateValue(task.dueDate));
+    setIsModalOpen(true);
+  };
+
+  const openCreateModal = (prefillDate = null) => {
+    setEditingTaskId(null);
+    setTitle('');
+    setDescription('');
+    setStatus('To Do');
+    setPriority('Medium');
+    setAssignedTo('');
+    setDueDate(prefillDate ? toInputDateValue(prefillDate) : '');
     setIsModalOpen(true);
   };
 
@@ -125,6 +141,7 @@ function Dashboard({ toggleSidebar, activeWorkspace }) {
     setStatus('To Do');
     setPriority('Medium');
     setAssignedTo('');
+    setDueDate('');
     setIsModalOpen(false);
   };
 
@@ -153,6 +170,21 @@ function Dashboard({ toggleSidebar, activeWorkspace }) {
       if (response.ok) fetchTasks();
     } catch (error) {
       console.error('Error shifting pipeline state:', error);
+    }
+  };
+
+  const handleTaskDueDateChange = async (taskId, newDate) => {
+    try {
+      const response = await fetch(`http://localhost:5000/api/tasks/${taskId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          dueDate: newDate ? newDate.toISOString() : null,
+        }),
+      });
+      if (response.ok) fetchTasks();
+    } catch (error) {
+      console.error('Error updating task deadline:', error);
     }
   };
 
@@ -214,7 +246,7 @@ function Dashboard({ toggleSidebar, activeWorkspace }) {
             </button>
           </form>
         ) : (
-          <span style={{ fontSize: '12px', color: '#64748b', fontStyle: 'italic' }}>Read-only Member View</span>
+          <span className="member-readonly-label">Read-only Member View</span>
         )}
       </div>
 
@@ -236,9 +268,10 @@ function Dashboard({ toggleSidebar, activeWorkspace }) {
         <div className="view-switcher">
           <button type="button" onClick={() => setActiveView('board')} className={`view-btn ${activeView === 'board' ? 'active' : ''}`}>Board</button>
           <button type="button" onClick={() => setActiveView('list')} className={`view-btn ${activeView === 'list' ? 'active' : ''}`}>List</button>
+          <button type="button" onClick={() => setActiveView('calendar')} className={`view-btn ${activeView === 'calendar' ? 'active' : ''}`}>Calendar</button>
         </div>
 
-        <button className="add-task-btn" onClick={() => setIsModalOpen(true)}>+ Add Task</button>
+        <button type="button" className="add-task-btn" onClick={() => openCreateModal()}>+ Add Task</button>
       </div>
 
       {/* Main Content Area Canvas */}
@@ -299,6 +332,12 @@ function Dashboard({ toggleSidebar, activeWorkspace }) {
                               <span>{expandedTaskId === task._id ? '▼' : '▶'}</span> {task.title}
                             </h4>
 
+                            {task.dueDate && (
+                              <span className="task-due-date">
+                                Due {new Date(task.dueDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                              </span>
+                            )}
+
                             {/* 📝 Expanded Tray carrying description, edit, and delete tools */}
                             {expandedTaskId === task._id && (
                               <div className="task-expand-tray">
@@ -321,7 +360,7 @@ function Dashboard({ toggleSidebar, activeWorkspace }) {
               );
             })}
           </div>
-        ) : (
+        ) : activeView === 'list' ? (
           <div className="list-view-panel">
             <h4 className="list-view-title">Workspace Grid View ({filteredTasks.length} shown)</h4>
             {filteredTasks.length === 0 ? (
@@ -333,20 +372,29 @@ function Dashboard({ toggleSidebar, activeWorkspace }) {
                     <th>Task</th>
                     <th>Status</th>
                     <th>Priority</th>
+                    <th>Due Date</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredTasks.map(t => (
-                    <tr key={t._id}>
+                    <tr key={t._id} onClick={() => openEditModal(t)} style={{ cursor: 'pointer' }}>
                       <td style={{ fontWeight: 600 }}>{t.title}</td>
                       <td>{t.status}</td>
                       <td><span className={`badge badge-${t.priority.toLowerCase()}`}>{t.priority}</span></td>
+                      <td>{t.dueDate ? new Date(t.dueDate).toLocaleDateString() : '—'}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             )}
           </div>
+        ) : (
+          <CalendarView
+            tasks={filteredTasks}
+            onDateClick={(date) => openCreateModal(date)}
+            onTaskClick={openEditModal}
+            onTaskDrop={handleTaskDueDateChange}
+          />
         )}
       </div>
 
@@ -399,6 +447,11 @@ function Dashboard({ toggleSidebar, activeWorkspace }) {
                     </option>
                   ))}
                 </select>
+              </div>
+
+              <div>
+                <label>Due Date</label>
+                <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
               </div>
 
               <div className="modal-actions">

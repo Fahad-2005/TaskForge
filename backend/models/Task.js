@@ -30,6 +30,10 @@ const TaskSchema = new mongoose.Schema({
     ref: 'User', // Optional field tracking which team member is doing the work
     default: null
   },
+  dueDate: {
+    type: Date,
+    default: null
+  },
   createdAt: {
     type: Date,
     default: Date.now
