@@ -2,9 +2,9 @@ const express = require('express');
 const router = express.Router();
 const Workspace = require('../models/Workspace');
 const User = require('../models/User');
+const Notification = require('../models/Notification');
+const { createWorkspaceInviteNotification } = require('../utils/notifications');
 
-// 🏢 1. CREATE A NEW WORKSPACE
-// URL: http://localhost:5000/api/workspaces
 router.post('/', async (req, res) => {
   try {
     const { name, ownerId } = req.body;
@@ -12,7 +12,7 @@ router.post('/', async (req, res) => {
     const newWorkspace = new Workspace({
       name,
       owner: ownerId,
-      members: [ownerId] // Owner is automatically the first member
+      members: [ownerId],
     });
 
     const savedWorkspace = await newWorkspace.save();
@@ -22,19 +22,15 @@ router.post('/', async (req, res) => {
   }
 });
 
-// 🏢 2. GET WORKSPACES FOR A SPECIFIC USER (Scoped Filter with User Hydration)
-// URL: http://localhost:5000/api/workspaces/user/:userId
 router.get('/user/:userId', async (req, res) => {
   try {
     const { userId } = req.params;
 
-    // Find workspaces where the user is the owner, swapping member ID strings for real names and emails
     const owned = await Workspace.find({ owner: userId }).populate('members', 'name email');
 
-    // Find workspaces where the user is a member BUT NOT the owner, swapping member ID strings for real names and emails
     const joined = await Workspace.find({
       members: userId,
-      owner: { $ne: userId } // $ne means "not equal to"
+      owner: { $ne: userId },
     }).populate('members', 'name email');
 
     res.status(200).json({ owned, joined });
@@ -43,35 +39,50 @@ router.get('/user/:userId', async (req, res) => {
   }
 });
 
-// ✉️ 3. INVITE A USER TO WORKSPACE BY EMAIL
-// URL: http://localhost:5000/api/workspaces/:workspaceId/invite
 router.post('/:workspaceId/invite', async (req, res) => {
   try {
-    const { email } = req.body;
+    const { email, inviterId } = req.body;
     const { workspaceId } = req.params;
 
-    // A. Check if the invited user even exists in TaskForge
+    if (!inviterId) {
+      return res.status(400).json({ message: 'Inviter ID is required' });
+    }
+
     const userToInvite = await User.findOne({ email });
     if (!userToInvite) {
       return res.status(404).json({ message: 'No user found with this email address' });
     }
 
-    // B. Find the target workspace
     const workspace = await Workspace.findById(workspaceId);
     if (!workspace) {
       return res.status(404).json({ message: 'Workspace not found' });
     }
 
-    // C. Check if the user is already a member of this workspace
-    if (workspace.members.includes(userToInvite._id)) {
+    if (workspace.members.some((id) => id.toString() === userToInvite._id.toString())) {
       return res.status(400).json({ message: 'User is already a member of this workspace' });
     }
 
-    // D. Add the user's unique ID to the workspace members array
-    workspace.members.push(userToInvite._id);
-    await workspace.save();
+    const pendingInvite = await Notification.findOne({
+      recipient: userToInvite._id,
+      workspace: workspaceId,
+      type: 'workspace_invite',
+      inviteStatus: 'pending',
+    });
 
-    res.status(200).json({ message: 'User added to workspace successfully!', workspace });
+    if (pendingInvite) {
+      return res.status(400).json({ message: 'An invite is already pending for this user' });
+    }
+
+    await createWorkspaceInviteNotification({
+      recipientId: userToInvite._id,
+      inviterId,
+      workspaceId: workspace._id,
+      workspaceName: workspace.name,
+    });
+
+    res.status(200).json({
+      message: `Invite sent to ${userToInvite.name}. They can accept from their notification center.`,
+    });
   } catch (error) {
     res.status(500).json({ message: 'Server invitation error', error: error.message });
   }

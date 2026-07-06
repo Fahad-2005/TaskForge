@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const Task = require('../models/Task');
+const { createTaskAssignedNotification } = require('../utils/notifications');
 
 const buildTaskUpdates = (body) => {
   const updates = {};
@@ -32,7 +33,7 @@ router.get('/', async (req, res) => {
 
 router.post('/', async (req, res) => {
   try {
-    const { title, description, status, priority, workspace, assignedTo, dueDate } = req.body;
+    const { title, description, status, priority, workspace, assignedTo, dueDate, assignedBy } = req.body;
 
     const newTask = new Task({
       title,
@@ -45,6 +46,16 @@ router.post('/', async (req, res) => {
     });
 
     const savedTask = await newTask.save();
+
+    if (savedTask.assignedTo) {
+      await createTaskAssignedNotification({
+        recipientId: savedTask.assignedTo,
+        actorId: assignedBy,
+        taskId: savedTask._id,
+        taskTitle: savedTask.title,
+      });
+    }
+
     res.status(201).json(savedTask);
   } catch (error) {
     console.error('Mongoose Task Error:', error);
@@ -56,15 +67,31 @@ router.post('/', async (req, res) => {
 
 router.put('/:id', async (req, res) => {
   try {
+    const existingTask = await Task.findById(req.params.id);
+    if (!existingTask) {
+      return res.status(404).json({ message: 'Task not found' });
+    }
+
     const updates = buildTaskUpdates(req.body);
+    const { assignedBy } = req.body;
 
     const updatedTask = await Task.findByIdAndUpdate(req.params.id, updates, {
       new: true,
       runValidators: true,
     });
 
-    if (!updatedTask) {
-      return res.status(404).json({ message: 'Task not found' });
+    const assigneeChanged =
+      updates.assignedTo !== undefined &&
+      updates.assignedTo &&
+      (!existingTask.assignedTo || existingTask.assignedTo.toString() !== updates.assignedTo.toString());
+
+    if (assigneeChanged) {
+      await createTaskAssignedNotification({
+        recipientId: updates.assignedTo,
+        actorId: assignedBy,
+        taskId: updatedTask._id,
+        taskTitle: updatedTask.title,
+      });
     }
 
     res.status(200).json(updatedTask);
