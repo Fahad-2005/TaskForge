@@ -1,11 +1,47 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTheme } from '../context/ThemeContext';
 import './ProfileSettings.css';
 
-function ProfileSettings() {
-  const currentUser = JSON.parse(localStorage.getItem('user')) || { name: 'Fahad', email: 'fahad@example.com' };
-  const [name, setName] = useState(currentUser.name);
+function ProfileSettings({ user, onUserUpdate }) {
+  const [name, setName] = useState(user?.name || '');
+  const [email, setEmail] = useState(user?.email || '');
+  const [isSaving, setIsSaving] = useState(false);
+  const [statusMessage, setStatusMessage] = useState({ type: '', text: '' });
   const { theme, setTheme, isDark } = useTheme();
+
+  const userId = user?.id || user?._id;
+
+  useEffect(() => {
+    if (user) {
+      setName(user.name || '');
+      setEmail(user.email || '');
+    }
+  }, [user]);
+
+  const handleSave = async () => {
+    if (!userId) return;
+    setStatusMessage({ type: '', text: '' });
+    setIsSaving(true);
+
+    try {
+      const response = await fetch(`http://localhost:5000/api/auth/profile/${userId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: name.trim(), email: email.trim() }),
+      });
+
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message || 'Failed to update profile');
+
+      localStorage.setItem('user', JSON.stringify(data.user));
+      if (onUserUpdate) onUserUpdate(data.user);
+      setStatusMessage({ type: 'success', text: 'Profile updated successfully!' });
+    } catch (error) {
+      setStatusMessage({ type: 'error', text: error.message });
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   return (
     <div className="settings-page main-content">
@@ -18,29 +54,50 @@ function ProfileSettings() {
         <div className="settings-card">
           <div className="settings-card-header">
             <div className="settings-avatar-large">
-              {name.charAt(0).toUpperCase()}
+              {(name || 'U').charAt(0).toUpperCase()}
             </div>
             <div>
-              <h2 className="settings-title">{name}</h2>
-              <p className="settings-desc">{currentUser.email}</p>
+              <h2 className="settings-title">{name || 'User'}</h2>
+              <p className="settings-desc">{email}</p>
             </div>
           </div>
 
           <hr className="settings-divider" />
 
+          {statusMessage.text && (
+            <div className={`settings-status settings-status--${statusMessage.type}`}>
+              {statusMessage.text}
+            </div>
+          )}
+
           <div className="settings-form">
             <div className="form-field">
               <label htmlFor="profile-name">Full Name</label>
-              <input id="profile-name" type="text" value={name} onChange={(e) => setName(e.target.value)} />
+              <input
+                id="profile-name"
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+              />
             </div>
 
             <div className="form-field">
               <label htmlFor="profile-email">Email Address</label>
-              <input id="profile-email" type="email" value={currentUser.email} disabled />
+              <input
+                id="profile-email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
             </div>
 
-            <button type="button" className="btn-primary settings-save-btn">
-              Save Changes
+            <button
+              type="button"
+              className="btn-primary settings-save-btn"
+              onClick={handleSave}
+              disabled={isSaving}
+            >
+              {isSaving ? 'Saving...' : 'Save Changes'}
             </button>
           </div>
         </div>

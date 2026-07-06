@@ -111,6 +111,21 @@
   font-style: italic;
 }
 
+.invite-feedback {
+  font-size: 12px;
+  font-weight: 600;
+  max-width: 220px;
+  line-height: 1.4;
+}
+
+.invite-feedback--success {
+  color: var(--success);
+}
+
+.invite-feedback--error {
+  color: var(--danger);
+}
+
 /* Top bar */
 .top-bar {
   height: 68px;

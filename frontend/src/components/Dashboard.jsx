@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import CalendarView from './CalendarView';
+import NotificationCenter from './NotificationCenter';
 import { toInputDateValue } from '../utils/dateHelpers';
 import './Dashboard.css';
 
-function Dashboard({ toggleSidebar, activeWorkspace }) {
+function Dashboard({ toggleSidebar, activeWorkspace, onWorkspaceUpdate }) {
   const [activeView, setActiveView] = useState('board');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [tasks, setTasks] = useState([]);
@@ -26,6 +27,8 @@ function Dashboard({ toggleSidebar, activeWorkspace }) {
   const [assignedTo, setAssignedTo] = useState('');
   const [dueDate, setDueDate] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [inviteSuccess, setInviteSuccess] = useState('');
+  const [inviteError, setInviteError] = useState('');
 
   // User Profile Properties
   const currentUser = JSON.parse(localStorage.getItem('user')) || {};
@@ -54,18 +57,20 @@ function Dashboard({ toggleSidebar, activeWorkspace }) {
     e.preventDefault();
     if (!inviteEmail || !activeWorkspace?._id) return;
     setIsInviting(true);
+    setInviteSuccess('');
+    setInviteError('');
     try {
       const response = await fetch(`http://localhost:5000/api/workspaces/${activeWorkspace._id}/invite`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: inviteEmail }),
+        body: JSON.stringify({ email: inviteEmail, inviterId: currentUserId }),
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.message || 'Invitation failed');
-      alert(`✅ Success: ${data.message}`);
+      setInviteSuccess(data.message);
       setInviteEmail('');
     } catch (error) {
-      alert(`⚠️ ${error.message}`);
+      setInviteError(error.message);
     } finally {
       setIsInviting(false);
     }
@@ -95,6 +100,7 @@ function Dashboard({ toggleSidebar, activeWorkspace }) {
           workspace: activeWorkspace._id,
           assignedTo: assignedTo || null,
           dueDate: dueDate || null,
+          assignedBy: currentUserId,
         }),
       });
 
@@ -242,8 +248,10 @@ function Dashboard({ toggleSidebar, activeWorkspace }) {
               required
             />
             <button type="submit" className="invite-btn" disabled={isInviting}>
-              {isInviting ? 'Adding...' : '+ Invite'}
+              {isInviting ? 'Sending...' : '+ Invite'}
             </button>
+            {inviteSuccess && <span className="invite-feedback invite-feedback--success">{inviteSuccess}</span>}
+            {inviteError && <span className="invite-feedback invite-feedback--error">{inviteError}</span>}
           </form>
         ) : (
           <span className="member-readonly-label">Read-only Member View</span>
@@ -270,6 +278,11 @@ function Dashboard({ toggleSidebar, activeWorkspace }) {
           <button type="button" onClick={() => setActiveView('list')} className={`view-btn ${activeView === 'list' ? 'active' : ''}`}>List</button>
           <button type="button" onClick={() => setActiveView('calendar')} className={`view-btn ${activeView === 'calendar' ? 'active' : ''}`}>Calendar</button>
         </div>
+
+        <NotificationCenter
+          className="notification-center--ribbon"
+          onWorkspaceUpdate={onWorkspaceUpdate}
+        />
 
         <button type="button" className="add-task-btn" onClick={() => openCreateModal()}>+ Add Task</button>
       </div>

@@ -1,8 +1,8 @@
 import React from 'react';
 import './HomeHub.css';
 
-function HomeHub({ changeSubScreen, tasks = [] }) {
-  const currentUser = JSON.parse(localStorage.getItem('user')) || { name: 'Fahad' };
+function HomeHub({ changeSubScreen, tasks = [], user }) {
+  const currentUser = user || JSON.parse(localStorage.getItem('user')) || { name: 'Fahad' };
 
   const totalTasks = tasks.length;
   const completedTasks = tasks.filter(t => t.status === 'Complete').length;

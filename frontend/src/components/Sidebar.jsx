@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import './Sidebar.css';
 
-function Sidebar({ onLogout, isOpen, currentScreen, onScreenChange, workspaces, activeWorkspace, setActiveWorkspace, onCreateWorkspace }) {
-  const currentUser = JSON.parse(localStorage.getItem('user')) || { name: 'Workspace User' };
+function Sidebar({ onLogout, isOpen, currentScreen, onScreenChange, workspaces, activeWorkspace, setActiveWorkspace, onCreateWorkspace, user }) {
+  const currentUser = user || JSON.parse(localStorage.getItem('user')) || { name: 'Workspace User' };
   const [newSpaceName, setNewSpaceName] = useState('');
   const [showSpaceInput, setShowSpaceInput] = useState(false);
 
