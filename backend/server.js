@@ -3,6 +3,7 @@ const dns = require('node:dns/promises');
 dns.setServers(['1.1.1.1', '8.8.8.8']);
 
 const express = require('express');
+const http = require('http');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const dotenv = require('dotenv');
@@ -12,10 +13,15 @@ const taskRoutes = require('./routes/taskRoutes');
 const authRoutes = require('./routes/authRoutes');
 const workspaceRoutes = require('./routes/workspaceRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
+const commentRoutes = require('./routes/commentRoutes');
+const activityRoutes = require('./routes/activityRoutes');
+const { initializeSocket } = require('./socket');
 
 dotenv.config();
 
 const app = express();
+const httpServer = http.createServer(app);
+initializeSocket(httpServer);
 const PORT = process.env.PORT || 5000;
 
 // Middleware
@@ -32,6 +38,8 @@ app.use('/api/tasks', taskRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/workspaces', workspaceRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/comments', commentRoutes);
+app.use('/api/activities', activityRoutes);
 
 const dbURI = process.env.MONGO_URI;
 
@@ -44,7 +52,7 @@ if (!dbURI) {
 mongoose.connect(dbURI)
   .then(() => {
     console.log('🚀 Connected smoothly to MongoDB Atlas (TaskForge DB)!');
-    app.listen(PORT, () => console.log(`💻 Server is running on port ${PORT}`));
+    httpServer.listen(PORT, () => console.log(`💻 Server is running on port ${PORT}`));
   })
   .catch(err => {
     console.error('❌ Database connection error layout:', err.message);

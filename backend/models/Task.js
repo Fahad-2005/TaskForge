@@ -30,14 +30,17 @@ const TaskSchema = new mongoose.Schema({
     ref: 'User', // Optional field tracking which team member is doing the work
     default: null
   },
-  dueDate: {
+  startDate: {
     type: Date,
     default: null
   },
-  createdAt: {
+  dueDate: {
     type: Date,
-    default: Date.now
+    default: null
   }
-});
+}, { timestamps: true });
+
+TaskSchema.index({ workspace: 1, createdAt: -1 });
+TaskSchema.index({ workspace: 1, startDate: 1, dueDate: 1 });
 
 module.exports = mongoose.model('Task', TaskSchema);

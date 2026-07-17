@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useTheme } from '../context/ThemeContext';
 import './ProfileSettings.css';
 
@@ -10,13 +10,6 @@ function ProfileSettings({ user, onUserUpdate }) {
   const { theme, setTheme, isDark } = useTheme();
 
   const userId = user?.id || user?._id;
-
-  useEffect(() => {
-    if (user) {
-      setName(user.name || '');
-      setEmail(user.email || '');
-    }
-  }, [user]);
 
   const handleSave = async () => {
     if (!userId) return;

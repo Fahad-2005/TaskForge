@@ -452,6 +452,16 @@
   box-shadow: 0 0 0 3px var(--accent-soft);
 }
 
+.modal-date-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.modal-date-row > div {
+  min-width: 0;
+}
+
 .modal-actions {
   display: flex;
   gap: 10px;
@@ -719,5 +729,20 @@
 
 [data-theme="dark"] .form-field input:disabled {
   background: rgba(15, 23, 42, 0.6);
+}
+
+@media (max-width: 1180px) {
+  .top-bar {
+    gap: 10px;
+    padding-inline: 18px;
+  }
+
+  .view-btn {
+    padding-inline: 10px;
+  }
+
+  .filter-bar {
+    max-width: 330px;
+  }
 }
 

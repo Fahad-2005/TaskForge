@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import Auth from './components/Auth';
 import Sidebar from './components/Sidebar';
 import Dashboard from './components/Dashboard';
 import HomeHub from './components/HomeHub';
 import ProfileSettings from './components/ProfileSettings';
 import NotificationCenter from './components/NotificationCenter';
+import { apiFetch } from './services/api';
 
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -33,34 +34,36 @@ function App() {
         } else if (data.joined.length > 0 && !activeWorkspace) {
           setActiveWorkspace(data.joined[0]);
         }
+        return data;
       }
     } catch (error) {
       console.error('Error pulling workspaces:', error);
     }
   };
 
-  const fetchAllUserTasks = async () => {
+  const fetchAllUserTasks = async (spaces = workspaces) => {
     try {
-      const response = await fetch('http://localhost:5000/api/tasks');
-      if (response.ok) {
-        const data = await response.json();
-        setAllTasks(data);
-      }
+      const ids = [...(spaces.owned || []), ...(spaces.joined || [])].map((space) => space._id);
+      const taskGroups = await Promise.all(ids.map((id) => apiFetch(`/tasks?workspace=${id}`)));
+      setAllTasks(taskGroups.flat());
     } catch (error) {
       console.error('Error loading global tasks for analytics:', error);
     }
   };
 
+  /* eslint-disable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
   useEffect(() => {
     if (isLoggedIn) {
-      fetchWorkspaces();
-      fetchAllUserTasks();
+      fetchWorkspaces().then((spaces) => {
+        if (spaces) fetchAllUserTasks(spaces);
+      });
     } else {
       setWorkspaces({ owned: [], joined: [] });
       setActiveWorkspace(null);
       setAllTasks([]);
     }
   }, [isLoggedIn]);
+  /* eslint-enable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
 
   const handleCreateWorkspace = async (workspaceName) => {
     const currentUser = user || JSON.parse(localStorage.getItem('user'));

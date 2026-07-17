@@ -1,4 +1,6 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { apiFetch } from '../services/api';
+import { useWorkspaceSocket } from '../hooks/useWorkspaceSocket';
 import './NotificationCenter.css';
 
 function NotificationCenter({ onWorkspaceUpdate, className = '' }) {
@@ -13,21 +15,30 @@ function NotificationCenter({ onWorkspaceUpdate, className = '' }) {
   const fetchNotifications = useCallback(async () => {
     if (!userId) return;
     try {
-      const response = await fetch(`http://localhost:5000/api/notifications/user/${userId}`);
-      if (response.ok) {
-        const data = await response.json();
-        setNotifications(data);
-      }
+      const data = await apiFetch(`/notifications/user/${userId}`);
+      setNotifications(data);
     } catch (error) {
       console.error('Error loading notifications:', error);
     }
   }, [userId]);
 
+  useWorkspaceSocket(null, {
+    'notification:created': (notification) => {
+      setNotifications((current) => {
+        if (current.some((item) => item._id === notification._id)) return current;
+        return [notification, ...current];
+      });
+    },
+    connect: fetchNotifications,
+  });
+
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     fetchNotifications();
     const interval = setInterval(fetchNotifications, 30000);
     return () => clearInterval(interval);
   }, [fetchNotifications]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -49,7 +60,7 @@ function NotificationCenter({ onWorkspaceUpdate, className = '' }) {
 
   const markAsRead = async (id) => {
     try {
-      await fetch(`http://localhost:5000/api/notifications/${id}/read`, { method: 'PATCH' });
+      await apiFetch(`/notifications/${id}/read`, { method: 'PATCH' });
       setNotifications((prev) =>
         prev.map((n) => (n._id === id ? { ...n, read: true } : n))
       );
@@ -61,12 +72,7 @@ function NotificationCenter({ onWorkspaceUpdate, className = '' }) {
   const handleAcceptInvite = async (notification) => {
     setLoading(true);
     try {
-      const response = await fetch(
-        `http://localhost:5000/api/notifications/${notification._id}/accept-invite`,
-        { method: 'POST' }
-      );
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.message || 'Could not accept invite');
+      await apiFetch(`/notifications/${notification._id}/accept-invite`, { method: 'POST' });
 
       await fetchNotifications();
       if (onWorkspaceUpdate) onWorkspaceUpdate();
@@ -80,12 +86,7 @@ function NotificationCenter({ onWorkspaceUpdate, className = '' }) {
   const handleDeclineInvite = async (notification) => {
     setLoading(true);
     try {
-      const response = await fetch(
-        `http://localhost:5000/api/notifications/${notification._id}/decline-invite`,
-        { method: 'POST' }
-      );
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.message || 'Could not decline invite');
+      await apiFetch(`/notifications/${notification._id}/decline-invite`, { method: 'POST' });
 
       await fetchNotifications();
     } catch (error) {

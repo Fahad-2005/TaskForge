@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   MONTH_NAMES,
   WEEKDAY_LABELS,

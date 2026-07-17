@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useState } from 'react';
 
 const ThemeContext = createContext(null);
 const STORAGE_KEY = 'taskforge-theme';
@@ -22,6 +22,8 @@ export function ThemeProvider({ children }) {
   );
 }
 
+// Context and its consumer hook intentionally live together.
+// eslint-disable-next-line react-refresh/only-export-components
 export function useTheme() {
   const context = useContext(ThemeContext);
   if (!context) {

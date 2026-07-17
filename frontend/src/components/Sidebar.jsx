@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import './Sidebar.css';
 
 function Sidebar({ onLogout, isOpen, currentScreen, onScreenChange, workspaces, activeWorkspace, setActiveWorkspace, onCreateWorkspace, user }) {

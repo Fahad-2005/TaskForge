@@ -3,10 +3,16 @@ const router = express.Router();
 const Notification = require('../models/Notification');
 const Workspace = require('../models/Workspace');
 const User = require('../models/User');
+const { requireAuth } = require('../middleware/auth');
+
+router.use(requireAuth);
 
 router.get('/user/:userId', async (req, res) => {
   try {
-    const notifications = await Notification.find({ recipient: req.params.userId })
+    if (req.params.userId !== req.user._id.toString()) {
+      return res.status(403).json({ message: 'Cannot view another user’s notifications' });
+    }
+    const notifications = await Notification.find({ recipient: req.user._id })
       .populate('actor', 'name email')
       .populate('workspace', 'name')
       .populate('task', 'title')
@@ -20,8 +26,8 @@ router.get('/user/:userId', async (req, res) => {
 
 router.patch('/:id/read', async (req, res) => {
   try {
-    const notification = await Notification.findByIdAndUpdate(
-      req.params.id,
+    const notification = await Notification.findOneAndUpdate(
+      { _id: req.params.id, recipient: req.user._id },
       { read: true },
       { new: true }
     );
@@ -39,6 +45,9 @@ router.post('/:id/accept-invite', async (req, res) => {
     const notification = await Notification.findById(req.params.id);
     if (!notification || notification.type !== 'workspace_invite') {
       return res.status(404).json({ message: 'Invite notification not found' });
+    }
+    if (notification.recipient.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: 'This invitation is not yours' });
     }
     if (notification.inviteStatus !== 'pending') {
       return res.status(400).json({ message: 'This invite has already been responded to' });
@@ -74,6 +83,9 @@ router.post('/:id/decline-invite', async (req, res) => {
     const notification = await Notification.findById(req.params.id);
     if (!notification || notification.type !== 'workspace_invite') {
       return res.status(404).json({ message: 'Invite notification not found' });
+    }
+    if (notification.recipient.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: 'This invitation is not yours' });
     }
     if (notification.inviteStatus !== 'pending') {
       return res.status(400).json({ message: 'This invite has already been responded to' });

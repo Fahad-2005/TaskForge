@@ -1,5 +1,6 @@
 const Notification = require('../models/Notification');
 const User = require('../models/User');
+const { emitToUser } = require('../socket');
 
 async function createWorkspaceInviteNotification({ recipientId, inviterId, workspaceId, workspaceName }) {
   const inviter = await User.findById(inviterId);
@@ -14,7 +15,7 @@ async function createWorkspaceInviteNotification({ recipientId, inviterId, works
 
   if (existing) return existing;
 
-  return Notification.create({
+  const notification = await Notification.create({
     recipient: recipientId,
     actor: inviterId,
     type: 'workspace_invite',
@@ -23,6 +24,11 @@ async function createWorkspaceInviteNotification({ recipientId, inviterId, works
     inviteStatus: 'pending',
     read: false,
   });
+  const populated = await Notification.findById(notification._id)
+    .populate('actor', 'name email')
+    .populate('workspace', 'name');
+  emitToUser(recipientId, 'notification:created', populated);
+  return populated;
 }
 
 async function createTaskAssignedNotification({ recipientId, actorId, taskId, taskTitle }) {
@@ -32,7 +38,7 @@ async function createTaskAssignedNotification({ recipientId, actorId, taskId, ta
   const actor = actorId ? await User.findById(actorId) : null;
   const actorName = actor?.name || 'Someone';
 
-  return Notification.create({
+  const notification = await Notification.create({
     recipient: recipientId,
     actor: actorId || null,
     type: 'task_assigned',
@@ -40,6 +46,11 @@ async function createTaskAssignedNotification({ recipientId, actorId, taskId, ta
     task: taskId,
     read: false,
   });
+  const populated = await Notification.findById(notification._id)
+    .populate('actor', 'name email')
+    .populate('task', 'title');
+  emitToUser(recipientId, 'notification:created', populated);
+  return populated;
 }
 
 module.exports = {

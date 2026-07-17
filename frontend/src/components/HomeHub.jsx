@@ -1,4 +1,3 @@
-import React from 'react';
 import './HomeHub.css';
 
 function HomeHub({ changeSubScreen, tasks = [], user }) {

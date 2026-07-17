@@ -1,7 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import CalendarView from './CalendarView';
+import TimelineView from './TimelineView';
 import NotificationCenter from './NotificationCenter';
+import TaskActivityDrawer from './TaskActivityDrawer';
 import { toInputDateValue } from '../utils/dateHelpers';
+import { apiFetch } from '../services/api';
+import { useWorkspaceSocket } from '../hooks/useWorkspaceSocket';
 import './Dashboard.css';
 
 function Dashboard({ toggleSidebar, activeWorkspace, onWorkspaceUpdate }) {
@@ -25,10 +29,12 @@ function Dashboard({ toggleSidebar, activeWorkspace, onWorkspaceUpdate }) {
   const [status, setStatus] = useState('To Do');
   const [priority, setPriority] = useState('Medium');
   const [assignedTo, setAssignedTo] = useState('');
+  const [startDate, setStartDate] = useState('');
   const [dueDate, setDueDate] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [inviteSuccess, setInviteSuccess] = useState('');
   const [inviteError, setInviteError] = useState('');
+  const [selectedTask, setSelectedTask] = useState(null);
 
   // User Profile Properties
   const currentUser = JSON.parse(localStorage.getItem('user')) || {};
@@ -38,20 +44,38 @@ function Dashboard({ toggleSidebar, activeWorkspace, onWorkspaceUpdate }) {
   const fetchTasks = async () => {
     if (!activeWorkspace?._id) return;
     try {
-      const response = await fetch('http://localhost:5000/api/tasks');
-      const data = await response.json();
-      if (response.ok) {
-        const scopedTasks = data.filter(t => t.workspace === activeWorkspace._id);
-        setTasks(scopedTasks);
-      }
+      const data = await apiFetch(`/tasks?workspace=${activeWorkspace._id}`);
+      setTasks(data);
     } catch (error) {
       console.error('Error fetching data:', error);
     }
   };
 
+  /* eslint-disable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
   useEffect(() => {
     fetchTasks();
   }, [activeWorkspace]);
+  /* eslint-enable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
+
+  const upsertTask = (incoming) => {
+    setTasks((current) => {
+      const exists = current.some((task) => task._id === incoming._id);
+      return exists
+        ? current.map((task) => (task._id === incoming._id ? incoming : task))
+        : [incoming, ...current];
+    });
+    setSelectedTask((current) => current?._id === incoming._id ? incoming : current);
+  };
+
+  useWorkspaceSocket(activeWorkspace?._id, {
+    'task:created': upsertTask,
+    'task:updated': upsertTask,
+    'task:deleted': ({ _id }) => {
+      setTasks((current) => current.filter((task) => task._id !== _id));
+      setSelectedTask((current) => current?._id === _id ? null : current);
+    },
+    connect: fetchTasks,
+  });
 
   const handleInviteUser = async (e) => {
     e.preventDefault();
@@ -80,18 +104,19 @@ function Dashboard({ toggleSidebar, activeWorkspace, onWorkspaceUpdate }) {
   const handleSaveTask = async (e) => {
     e.preventDefault();
     if (!activeWorkspace?._id) return;
+    if (startDate && dueDate && dueDate < startDate) {
+      alert('Due date must be on or after the start date.');
+      return;
+    }
     setIsSubmitting(true);
 
-    const url = editingTaskId 
-      ? `http://localhost:5000/api/tasks/${editingTaskId}` 
-      : 'http://localhost:5000/api/tasks';
+    const url = editingTaskId ? `/tasks/${editingTaskId}` : '/tasks';
       
     const method = editingTaskId ? 'PUT' : 'POST';
 
     try {
-      const response = await fetch(url, {
+      const saved = await apiFetch(url, {
         method: method,
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           title, 
           description, 
@@ -99,17 +124,14 @@ function Dashboard({ toggleSidebar, activeWorkspace, onWorkspaceUpdate }) {
           priority, 
           workspace: activeWorkspace._id,
           assignedTo: assignedTo || null,
+          startDate: startDate || null,
           dueDate: dueDate || null,
-          assignedBy: currentUserId,
         }),
       });
-
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.message || 'Server rejected request');
+      upsertTask(saved);
 
       // Clear Form state completely
       closeModal();
-      fetchTasks(); 
     } catch (error) {
       alert('❌ Task operation error: ' + error.message);
     } finally {
@@ -125,6 +147,7 @@ function Dashboard({ toggleSidebar, activeWorkspace, onWorkspaceUpdate }) {
     setStatus(task.status);
     setPriority(task.priority);
     setAssignedTo(task.assignedTo || '');
+    setStartDate(toInputDateValue(task.startDate));
     setDueDate(toInputDateValue(task.dueDate));
     setIsModalOpen(true);
   };
@@ -136,6 +159,7 @@ function Dashboard({ toggleSidebar, activeWorkspace, onWorkspaceUpdate }) {
     setStatus('To Do');
     setPriority('Medium');
     setAssignedTo('');
+    setStartDate(prefillDate ? toInputDateValue(prefillDate) : '');
     setDueDate(prefillDate ? toInputDateValue(prefillDate) : '');
     setIsModalOpen(true);
   };
@@ -147,6 +171,7 @@ function Dashboard({ toggleSidebar, activeWorkspace, onWorkspaceUpdate }) {
     setStatus('To Do');
     setPriority('Medium');
     setAssignedTo('');
+    setStartDate('');
     setDueDate('');
     setIsModalOpen(false);
   };
@@ -155,12 +180,8 @@ function Dashboard({ toggleSidebar, activeWorkspace, onWorkspaceUpdate }) {
   const handleDeleteTask = async (taskId) => {
     if (!window.confirm("Are you sure you want to delete this task completely?")) return;
     try {
-      const response = await fetch(`http://localhost:5000/api/tasks/${taskId}`, { method: 'DELETE' });
-      if (response.ok) {
-        fetchTasks();
-      } else {
-        alert("Could not remove item from database container.");
-      }
+      await apiFetch(`/tasks/${taskId}`, { method: 'DELETE' });
+      setTasks((current) => current.filter((task) => task._id !== taskId));
     } catch (error) {
       console.error("Error executing task removal:", error);
     }
@@ -168,12 +189,11 @@ function Dashboard({ toggleSidebar, activeWorkspace, onWorkspaceUpdate }) {
 
   const handleUpdateStatus = async (taskId, newStatus) => {
     try {
-      const response = await fetch(`http://localhost:5000/api/tasks/${taskId}`, {
+      const updated = await apiFetch(`/tasks/${taskId}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: newStatus }),
       });
-      if (response.ok) fetchTasks();
+      upsertTask(updated);
     } catch (error) {
       console.error('Error shifting pipeline state:', error);
     }
@@ -181,23 +201,38 @@ function Dashboard({ toggleSidebar, activeWorkspace, onWorkspaceUpdate }) {
 
   const handleTaskDueDateChange = async (taskId, newDate) => {
     try {
-      const response = await fetch(`http://localhost:5000/api/tasks/${taskId}`, {
+      const updated = await apiFetch(`/tasks/${taskId}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           dueDate: newDate ? newDate.toISOString() : null,
         }),
       });
-      if (response.ok) fetchTasks();
+      upsertTask(updated);
     } catch (error) {
       console.error('Error updating task deadline:', error);
+    }
+  };
+
+  const handleTaskTimelineMove = async (taskId, newStartDate, newDueDate) => {
+    try {
+      const updated = await apiFetch(`/tasks/${taskId}`, {
+        method: 'PUT',
+        body: JSON.stringify({
+          startDate: newStartDate.toISOString(),
+          dueDate: newDueDate.toISOString(),
+        }),
+      });
+      upsertTask(updated);
+    } catch (error) {
+      console.error('Error moving task timeline:', error);
+      alert(error.message);
     }
   };
 
   const filteredTasks = tasks.filter((task) => {
     const matchesSearch = 
       task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      task.description.toLowerCase().includes(searchQuery.toLowerCase());
+      (task.description || '').toLowerCase().includes(searchQuery.toLowerCase());
     const matchesPriority = priorityFilter === 'All' || task.priority === priorityFilter;
     return matchesSearch && matchesPriority;
   });
@@ -277,6 +312,7 @@ function Dashboard({ toggleSidebar, activeWorkspace, onWorkspaceUpdate }) {
           <button type="button" onClick={() => setActiveView('board')} className={`view-btn ${activeView === 'board' ? 'active' : ''}`}>Board</button>
           <button type="button" onClick={() => setActiveView('list')} className={`view-btn ${activeView === 'list' ? 'active' : ''}`}>List</button>
           <button type="button" onClick={() => setActiveView('calendar')} className={`view-btn ${activeView === 'calendar' ? 'active' : ''}`}>Calendar</button>
+          <button type="button" onClick={() => setActiveView('timeline')} className={`view-btn ${activeView === 'timeline' ? 'active' : ''}`}>Timeline</button>
         </div>
 
         <NotificationCenter
@@ -359,6 +395,7 @@ function Dashboard({ toggleSidebar, activeWorkspace, onWorkspaceUpdate }) {
                                 </p>
                                 
                                 <div className="card-action-row">
+                                  <button type="button" onClick={() => setSelectedTask(task)} className="tray-btn edit-btn">Discuss</button>
                                   <button type="button" onClick={() => openEditModal(task)} className="tray-btn edit-btn">Edit</button>
                                   <button type="button" onClick={() => handleDeleteTask(task._id)} className="tray-btn delete-btn">Delete</button>
                                 </div>
@@ -390,7 +427,7 @@ function Dashboard({ toggleSidebar, activeWorkspace, onWorkspaceUpdate }) {
                 </thead>
                 <tbody>
                   {filteredTasks.map(t => (
-                    <tr key={t._id} onClick={() => openEditModal(t)} style={{ cursor: 'pointer' }}>
+                    <tr key={t._id} onClick={() => setSelectedTask(t)} style={{ cursor: 'pointer' }}>
                       <td style={{ fontWeight: 600 }}>{t.title}</td>
                       <td>{t.status}</td>
                       <td><span className={`badge badge-${t.priority.toLowerCase()}`}>{t.priority}</span></td>
@@ -401,15 +438,33 @@ function Dashboard({ toggleSidebar, activeWorkspace, onWorkspaceUpdate }) {
               </table>
             )}
           </div>
-        ) : (
+        ) : activeView === 'calendar' ? (
           <CalendarView
             tasks={filteredTasks}
             onDateClick={(date) => openCreateModal(date)}
-            onTaskClick={openEditModal}
+            onTaskClick={setSelectedTask}
             onTaskDrop={handleTaskDueDateChange}
+          />
+        ) : (
+          <TimelineView
+            tasks={filteredTasks}
+            onTaskClick={setSelectedTask}
+            onTaskMove={handleTaskTimelineMove}
           />
         )}
       </div>
+
+      {selectedTask && (
+        <TaskActivityDrawer
+          task={selectedTask}
+          workspaceId={activeWorkspace._id}
+          onClose={() => setSelectedTask(null)}
+          onEdit={(task) => {
+            setSelectedTask(null);
+            openEditModal(task);
+          }}
+        />
+      )}
 
       {/* DUAL PURPOSE CREATION / EDITING MODAL */}
       {isModalOpen && (
@@ -462,9 +517,15 @@ function Dashboard({ toggleSidebar, activeWorkspace, onWorkspaceUpdate }) {
                 </select>
               </div>
 
-              <div>
-                <label>Due Date</label>
-                <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
+              <div className="modal-date-row">
+                <div>
+                  <label>Start Date</label>
+                  <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+                </div>
+                <div>
+                  <label>Due Date</label>
+                  <input type="date" min={startDate || undefined} value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
+                </div>
               </div>
 
               <div className="modal-actions">
