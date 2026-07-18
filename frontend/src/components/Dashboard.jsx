@@ -35,6 +35,8 @@ function Dashboard({ toggleSidebar, activeWorkspace, onWorkspaceUpdate }) {
   const [inviteSuccess, setInviteSuccess] = useState('');
   const [inviteError, setInviteError] = useState('');
   const [selectedTask, setSelectedTask] = useState(null);
+  const [draggingTaskId, setDraggingTaskId] = useState(null);
+  const [dropColumn, setDropColumn] = useState(null);
 
   // User Profile Properties
   const currentUser = JSON.parse(localStorage.getItem('user')) || {};
@@ -229,6 +231,35 @@ function Dashboard({ toggleSidebar, activeWorkspace, onWorkspaceUpdate }) {
     }
   };
 
+  const handleCardDragStart = (event, taskId) => {
+    setDraggingTaskId(taskId);
+    event.dataTransfer.setData('text/task-id', taskId);
+    event.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleCardDragEnd = () => {
+    setDraggingTaskId(null);
+    setDropColumn(null);
+  };
+
+  const handleColumnDragOver = (event, columnTitle) => {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'move';
+    setDropColumn(columnTitle);
+  };
+
+  const handleColumnDrop = async (event, columnTitle) => {
+    event.preventDefault();
+    const taskId = event.dataTransfer.getData('text/task-id') || draggingTaskId;
+    setDraggingTaskId(null);
+    setDropColumn(null);
+    if (!taskId) return;
+
+    const task = tasks.find((item) => item._id === taskId);
+    if (!task || task.status === columnTitle) return;
+    await handleUpdateStatus(taskId, columnTitle);
+  };
+
   const filteredTasks = tasks.filter((task) => {
     const matchesSearch = 
       task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -331,26 +362,40 @@ function Dashboard({ toggleSidebar, activeWorkspace, onWorkspaceUpdate }) {
               const columnTasks = filteredTasks.filter(t => t.status === columnTitle);
 
               return (
-                <div key={columnTitle} className="kanban-column">
+                <div
+                  key={columnTitle}
+                  className={`kanban-column ${dropColumn === columnTitle ? 'kanban-column--drop-target' : ''}`}
+                  onDragOver={(event) => handleColumnDragOver(event, columnTitle)}
+                  onDragLeave={() => {
+                    if (dropColumn === columnTitle) setDropColumn(null);
+                  }}
+                  onDrop={(event) => handleColumnDrop(event, columnTitle)}
+                >
                   <div className="column-header">
                     <span className="column-title">{columnTitle}</span>
                     <span className="column-count">{columnTasks.length}</span>
                   </div>
 
-                  <div style={{ flex: 1, overflowY: 'auto', minHeight: '150px' }}>
+                  <div className="kanban-column-body">
                     {columnTasks.length === 0 ? (
                       <div className="task-dropzone">Drop tasks here</div>
                     ) : (
                       columnTasks.map((task) => {
-                        const assigneeInfo = activeWorkspace?.members?.find(m => m._id === task.assignedTo);
+                        const assigneeInfo = activeWorkspace?.members?.find(m => m._id === task.assignedTo || m._id === task.assignedTo?._id);
 
                         return (
-                          <div key={task._id} className="task-card" style={{ borderLeftColor: getPriorityBorder(task.priority) }}>
+                          <div
+                            key={task._id}
+                            className={`task-card ${draggingTaskId === task._id ? 'task-card--dragging' : ''}`}
+                            style={{ borderLeftColor: getPriorityBorder(task.priority) }}
+                            draggable
+                            onDragStart={(event) => handleCardDragStart(event, task._id)}
+                            onDragEnd={handleCardDragEnd}
+                          >
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                 <span className={`badge badge-${task.priority.toLowerCase()}`}>{task.priority}</span>
                                 
-                                {/* 👤 SLEEK VISUAL ASSIGNEE AVATAR */}
                                 {assigneeInfo ? (
                                   <div 
                                     className="assignee-avatar" 
@@ -366,7 +411,12 @@ function Dashboard({ toggleSidebar, activeWorkspace, onWorkspaceUpdate }) {
                                 )}
                               </div>
 
-                              <select className="status-select-inline" value={task.status} onChange={(e) => handleUpdateStatus(task._id, e.target.value)}>
+                              <select
+                                className="status-select-inline"
+                                value={task.status}
+                                onChange={(e) => handleUpdateStatus(task._id, e.target.value)}
+                                onMouseDown={(e) => e.stopPropagation()}
+                              >
                                 <option value="To Do">To Do</option>
                                 <option value="In Progress">In Progress</option>
                                 <option value="In Review">In Review</option>
@@ -387,7 +437,6 @@ function Dashboard({ toggleSidebar, activeWorkspace, onWorkspaceUpdate }) {
                               </span>
                             )}
 
-                            {/* 📝 Expanded Tray carrying description, edit, and delete tools */}
                             {expandedTaskId === task._id && (
                               <div className="task-expand-tray">
                                 <p className="task-expand-desc">
@@ -458,6 +507,7 @@ function Dashboard({ toggleSidebar, activeWorkspace, onWorkspaceUpdate }) {
         <TaskActivityDrawer
           task={selectedTask}
           workspaceId={activeWorkspace._id}
+          members={activeWorkspace.members || []}
           onClose={() => setSelectedTask(null)}
           onEdit={(task) => {
             setSelectedTask(null);

@@ -70,6 +70,59 @@
   background: var(--bg-app);
 }
 
+.notification-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.notification-mark-all {
+  border: none;
+  background: transparent;
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 0;
+}
+
+.notification-mark-all:hover {
+  text-decoration: underline;
+}
+
+.notification-type-chip {
+  display: inline-block;
+  margin-bottom: 6px;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  background: var(--bg-app);
+  color: var(--text-muted);
+}
+
+.notification-type-chip--comment_mention {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.notification-type-chip--task_comment {
+  background: rgba(20, 184, 166, 0.12);
+  color: var(--teal);
+}
+
+.notification-type-chip--task_assigned {
+  background: rgba(245, 158, 11, 0.12);
+  color: #d97706;
+}
+
+.notification-type-chip--workspace_invite {
+  background: rgba(16, 185, 129, 0.12);
+  color: var(--success);
+}
+
 .notification-panel-header h4 {
   margin: 0;
   font-size: 14px;

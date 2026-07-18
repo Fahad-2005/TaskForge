@@ -127,7 +127,11 @@ function App() {
       )}
 
       {currentScreen === 'home' && (
-        <HomeHub changeSubScreen={setCurrentScreen} tasks={allTasks} user={user} />
+        <HomeHub
+          changeSubScreen={setCurrentScreen}
+          tasks={allTasks}
+          user={user}
+        />
       )}
 
       {currentScreen === 'tasks' && (

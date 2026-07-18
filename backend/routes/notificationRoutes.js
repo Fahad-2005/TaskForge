@@ -40,6 +40,21 @@ router.patch('/:id/read', async (req, res) => {
   }
 });
 
+router.patch('/user/:userId/read-all', async (req, res) => {
+  try {
+    if (req.params.userId !== req.user._id.toString()) {
+      return res.status(403).json({ message: 'Cannot update another user’s notifications' });
+    }
+    await Notification.updateMany(
+      { recipient: req.user._id, read: false },
+      { $set: { read: true } }
+    );
+    res.status(200).json({ message: 'All notifications marked as read' });
+  } catch (error) {
+    res.status(500).json({ message: 'Error marking notifications as read', error: error.message });
+  }
+});
+
 router.post('/:id/accept-invite', async (req, res) => {
   try {
     const notification = await Notification.findById(req.params.id);

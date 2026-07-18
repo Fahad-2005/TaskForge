@@ -105,7 +105,27 @@ function NotificationCenter({ onWorkspaceUpdate, className = '' }) {
   const getNotificationIcon = (type) => {
     if (type === 'workspace_invite') return '🤝';
     if (type === 'task_assigned') return '📋';
+    if (type === 'comment_mention') return '@';
+    if (type === 'task_comment') return '💬';
     return '🔔';
+  };
+
+  const getNotificationLabel = (type) => {
+    if (type === 'workspace_invite') return 'Invite';
+    if (type === 'task_assigned') return 'Assignment';
+    if (type === 'comment_mention') return 'Mention';
+    if (type === 'task_comment') return 'Comment';
+    return 'Alert';
+  };
+
+  const markAllAsRead = async () => {
+    if (!userId || unreadCount === 0) return;
+    try {
+      await apiFetch(`/notifications/user/${userId}/read-all`, { method: 'PATCH' });
+      setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+    } catch (error) {
+      console.error('Error marking all notifications read:', error);
+    }
   };
 
   const formatTime = (dateStr) => {
@@ -139,7 +159,14 @@ function NotificationCenter({ onWorkspaceUpdate, className = '' }) {
         <div className="notification-panel">
           <div className="notification-panel-header">
             <h4>Notifications</h4>
-            {unreadCount > 0 && <span className="notification-unread-pill">{unreadCount} unread</span>}
+            <div className="notification-header-actions">
+              {unreadCount > 0 && <span className="notification-unread-pill">{unreadCount} unread</span>}
+              {unreadCount > 0 && (
+                <button type="button" className="notification-mark-all" onClick={markAllAsRead}>
+                  Mark all read
+                </button>
+              )}
+            </div>
           </div>
 
           <div className="notification-list">
@@ -160,6 +187,9 @@ function NotificationCenter({ onWorkspaceUpdate, className = '' }) {
                   </div>
 
                   <div className="notification-item-body">
+                    <span className={`notification-type-chip notification-type-chip--${notification.type}`}>
+                      {getNotificationLabel(notification.type)}
+                    </span>
                     <p className="notification-message">{notification.message}</p>
                     <span className="notification-time">{formatTime(notification.createdAt)}</span>
 

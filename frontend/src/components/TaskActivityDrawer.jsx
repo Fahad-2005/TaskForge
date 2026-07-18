@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { apiFetch } from '../services/api';
 import { useWorkspaceSocket } from '../hooks/useWorkspaceSocket';
 import './TaskActivityDrawer.css';
@@ -12,15 +12,39 @@ function formatTime(value) {
   });
 }
 
-function TaskActivityDrawer({ task, workspaceId, onClose, onEdit }) {
+function renderCommentBody(body) {
+  const parts = body.split(/(@[A-Za-z0-9._-]+(?:\s+[A-Za-z0-9._-]+)?)/g);
+  return parts.map((part, index) =>
+    part.startsWith('@') ? (
+      <span className="comment-mention" key={`${part}-${index}`}>{part}</span>
+    ) : (
+      <span key={`${part}-${index}`}>{part}</span>
+    )
+  );
+}
+
+function TaskActivityDrawer({ task, workspaceId, members = [], onClose, onEdit }) {
   const [comments, setComments] = useState([]);
   const [activities, setActivities] = useState([]);
   const [commentBody, setCommentBody] = useState('');
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const [mentionQuery, setMentionQuery] = useState(null);
+  const textareaRef = useRef(null);
   const currentUser = JSON.parse(localStorage.getItem('user')) || {};
   const currentUserId = currentUser.id || currentUser._id;
+
+  const mentionSuggestions = useMemo(() => {
+    if (mentionQuery === null) return [];
+    const query = mentionQuery.toLowerCase();
+    return members
+      .filter((member) => {
+        const name = (member.name || '').toLowerCase();
+        return !query || name.includes(query) || name.split(/\s+/)[0].startsWith(query);
+      })
+      .slice(0, 5);
+  }, [members, mentionQuery]);
 
   const loadDrawer = useCallback(async () => {
     if (!task?._id) return;
@@ -75,6 +99,29 @@ function TaskActivityDrawer({ task, workspaceId, onClose, onEdit }) {
     connect: loadDrawer,
   });
 
+  const updateMentionState = (value, caret) => {
+    const before = value.slice(0, caret);
+    const match = before.match(/@([A-Za-z0-9._-]*)$/);
+    setMentionQuery(match ? match[1] : null);
+  };
+
+  const insertMention = (member) => {
+    const textarea = textareaRef.current;
+    const caret = textarea?.selectionStart ?? commentBody.length;
+    const before = commentBody.slice(0, caret);
+    const after = commentBody.slice(caret);
+    const replaced = before.replace(/@([A-Za-z0-9._-]*)$/, `@${member.name} `);
+    const next = `${replaced}${after}`;
+    setCommentBody(next);
+    setMentionQuery(null);
+    requestAnimationFrame(() => {
+      if (!textarea) return;
+      const nextCaret = replaced.length;
+      textarea.focus();
+      textarea.setSelectionRange(nextCaret, nextCaret);
+    });
+  };
+
   const submitComment = async (event) => {
     event.preventDefault();
     const body = commentBody.trim();
@@ -90,6 +137,7 @@ function TaskActivityDrawer({ task, workspaceId, onClose, onEdit }) {
         current.some((item) => item._id === comment._id) ? current : [...current, comment]
       );
       setCommentBody('');
+      setMentionQuery(null);
     } catch (requestError) {
       setError(requestError.message);
     } finally {
@@ -144,12 +192,38 @@ function TaskActivityDrawer({ task, workspaceId, onClose, onEdit }) {
 
             <form className="comment-composer" onSubmit={submitComment}>
               <textarea
+                ref={textareaRef}
                 value={commentBody}
-                onChange={(event) => setCommentBody(event.target.value)}
-                placeholder="Write an update for your team..."
+                onChange={(event) => {
+                  setCommentBody(event.target.value);
+                  updateMentionState(event.target.value, event.target.selectionStart);
+                }}
+                onKeyUp={(event) => updateMentionState(event.target.value, event.target.selectionStart)}
+                placeholder="Write an update… use @name to mention a teammate"
                 rows="3"
                 maxLength="2000"
               />
+              {mentionSuggestions.length > 0 && (
+                <div className="mention-suggestions">
+                  {mentionSuggestions.map((member) => (
+                    <button
+                      type="button"
+                      key={member._id}
+                      className="mention-suggestion"
+                      onMouseDown={(event) => {
+                        event.preventDefault();
+                        insertMention(member);
+                      }}
+                    >
+                      <span className="mention-avatar">{member.name?.charAt(0).toUpperCase()}</span>
+                      <span>
+                        <strong>{member.name}</strong>
+                        <small>{member.email}</small>
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
               <button type="submit" className="btn-primary" disabled={submitting || !commentBody.trim()}>
                 {submitting ? 'Posting...' : 'Post comment'}
               </button>
@@ -172,7 +246,7 @@ function TaskActivityDrawer({ task, workspaceId, onClose, onEdit }) {
                           <button type="button" onClick={() => deleteComment(comment._id)}>Delete</button>
                         )}
                       </div>
-                      <p>{comment.body}</p>
+                      <p>{renderCommentBody(comment.body)}</p>
                     </div>
                   </article>
                 ))}

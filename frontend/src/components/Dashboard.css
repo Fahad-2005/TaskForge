@@ -283,6 +283,29 @@
   display: flex;
   flex-direction: column;
   height: calc(100vh - 210px);
+  transition: box-shadow var(--duration-fast), border-color var(--duration-fast), background var(--duration-fast);
+}
+
+.kanban-column--drop-target {
+  border-color: rgba(99, 102, 241, 0.45);
+  background: var(--accent-soft);
+  box-shadow: inset 0 0 0 2px rgba(99, 102, 241, 0.25);
+}
+
+.kanban-column-body {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 150px;
+}
+
+.task-card--dragging {
+  opacity: 0.45;
+  transform: scale(0.98);
+  cursor: grabbing;
+}
+
+.task-card[draggable="true"] {
+  cursor: grab;
 }
 
 .column-header {

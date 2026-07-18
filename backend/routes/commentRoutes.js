@@ -2,10 +2,15 @@ const express = require('express');
 const router = express.Router();
 const Comment = require('../models/Comment');
 const Task = require('../models/Task');
+const Workspace = require('../models/Workspace');
 const { requireAuth } = require('../middleware/auth');
 const { getWorkspaceForUser } = require('../middleware/workspaceAccess');
 const { recordActivity } = require('../utils/activity');
 const { emitToWorkspace } = require('../socket');
+const {
+  createMentionNotifications,
+  createTaskCommentNotification,
+} = require('../utils/notifications');
 
 router.use(requireAuth);
 
@@ -56,6 +61,29 @@ router.post('/task/:taskId', async (req, res) => {
       message: `commented on "${task.title}"`,
       metadata: { commentId: comment._id },
     });
+
+    const populatedWorkspace = await Workspace.findById(workspace._id).populate('members', 'name email');
+    const mentions = await createMentionNotifications({
+      body,
+      members: populatedWorkspace?.members || [],
+      actorId: req.user._id,
+      actorName: req.user.name,
+      taskId: task._id,
+      taskTitle: task.title,
+      workspaceId: workspace._id,
+    });
+
+    const mentionedIds = new Set(mentions.map((item) => String(item.recipient?._id || item.recipient)));
+    if (task.assignedTo && !mentionedIds.has(String(task.assignedTo))) {
+      await createTaskCommentNotification({
+        recipientId: task.assignedTo,
+        actorId: req.user._id,
+        actorName: req.user.name,
+        taskId: task._id,
+        taskTitle: task.title,
+        workspaceId: workspace._id,
+      });
+    }
 
     emitToWorkspace(workspace._id, 'comment:created', comment);
     emitToWorkspace(workspace._id, 'activity:created', activity);

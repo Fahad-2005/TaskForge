@@ -102,6 +102,7 @@ router.post('/', async (req, res) => {
         actorId: req.user._id,
         taskId: savedTask._id,
         taskTitle: savedTask.title,
+        workspaceId: savedTask.workspace,
       });
     }
 
@@ -158,6 +159,7 @@ router.put('/:id', async (req, res) => {
         actorId: req.user._id,
         taskId: updatedTask._id,
         taskTitle: updatedTask.title,
+        workspaceId: updatedTask.workspace,
       });
     }
 
