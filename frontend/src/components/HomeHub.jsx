@@ -158,8 +158,8 @@ function HomeHub({ changeSubScreen, tasks = [], user }) {
                 ? 'No overdue tasks on your plate — deadlines are on track.'
                 : `${overdueTasks} of your task${overdueTasks === 1 ? '' : 's'} ${overdueTasks === 1 ? 'is' : 'are'} past due${urgentTasks ? `, including ${urgentTasks} urgent` : ''}.`}
             </p>
-            <button type="button" className="btn-primary workload-cta" onClick={() => changeSubScreen('tasks')}>
-              Review board
+            <button type="button" className="btn-primary workload-cta" onClick={() => changeSubScreen('my-tasks')}>
+              Open My Tasks
             </button>
           </div>
         </div>

@@ -8,7 +8,14 @@ import { apiFetch } from '../services/api';
 import { useWorkspaceSocket } from '../hooks/useWorkspaceSocket';
 import './Dashboard.css';
 
-function Dashboard({ toggleSidebar, activeWorkspace, onWorkspaceUpdate }) {
+function Dashboard({
+  toggleSidebar,
+  activeWorkspace,
+  onWorkspaceUpdate,
+  focusTaskId,
+  onFocusTaskConsumed,
+  onOpenNotification,
+}) {
   const [activeView, setActiveView] = useState('board');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [tasks, setTasks] = useState([]);
@@ -57,6 +64,14 @@ function Dashboard({ toggleSidebar, activeWorkspace, onWorkspaceUpdate }) {
   useEffect(() => {
     fetchTasks();
   }, [activeWorkspace]);
+
+  useEffect(() => {
+    if (!focusTaskId || tasks.length === 0) return;
+    const match = tasks.find((task) => String(task._id) === String(focusTaskId));
+    if (!match) return;
+    setSelectedTask(match);
+    onFocusTaskConsumed?.();
+  }, [focusTaskId, tasks]);
   /* eslint-enable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
 
   const upsertTask = (incoming) => {
@@ -349,6 +364,7 @@ function Dashboard({ toggleSidebar, activeWorkspace, onWorkspaceUpdate }) {
         <NotificationCenter
           className="notification-center--ribbon"
           onWorkspaceUpdate={onWorkspaceUpdate}
+          onOpenNotification={onOpenNotification}
         />
 
         <button type="button" className="add-task-btn" onClick={() => openCreateModal()}>+ Add Task</button>

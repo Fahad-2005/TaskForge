@@ -3,6 +3,7 @@ import Auth from './components/Auth';
 import Sidebar from './components/Sidebar';
 import Dashboard from './components/Dashboard';
 import HomeHub from './components/HomeHub';
+import MyTasks from './components/MyTasks';
 import ProfileSettings from './components/ProfileSettings';
 import NotificationCenter from './components/NotificationCenter';
 import { apiFetch } from './services/api';
@@ -16,6 +17,7 @@ function App() {
   const [workspaces, setWorkspaces] = useState({ owned: [], joined: [] });
   const [activeWorkspace, setActiveWorkspace] = useState(null);
   const [allTasks, setAllTasks] = useState([]);
+  const [focusTaskId, setFocusTaskId] = useState(null);
 
   const fetchWorkspaces = async () => {
     const currentUser = user || JSON.parse(localStorage.getItem('user'));
@@ -99,6 +101,51 @@ function App() {
     setUser(null);
   };
 
+  const openTaskInWorkspace = (workspace, taskId) => {
+    if (workspace) setActiveWorkspace(workspace);
+    setFocusTaskId(taskId ? String(taskId) : null);
+    setCurrentScreen('tasks');
+  };
+
+  const handleOpenNotification = async (notification) => {
+    const openable = ['task_assigned', 'comment_mention', 'task_comment'];
+    if (!openable.includes(notification.type)) return;
+
+    const workspaceId =
+      typeof notification.workspace === 'object'
+        ? notification.workspace?._id
+        : notification.workspace;
+    const taskId =
+      typeof notification.task === 'object'
+        ? notification.task?._id
+        : notification.task;
+
+    if (!workspaceId || !taskId) return;
+
+    const findSpace = (spaces) =>
+      [...(spaces?.owned || []), ...(spaces?.joined || [])].find(
+        (item) => String(item._id) === String(workspaceId)
+      );
+
+    let space = findSpace(workspaces);
+    if (!space) {
+      const refreshed = await fetchWorkspaces();
+      space = findSpace(refreshed || workspaces);
+    }
+
+    openTaskInWorkspace(space || null, taskId);
+  };
+
+  /* eslint-disable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
+  useEffect(() => {
+    if (isLoggedIn && currentScreen === 'my-tasks') {
+      fetchWorkspaces().then((spaces) => {
+        if (spaces) fetchAllUserTasks(spaces);
+      });
+    }
+  }, [currentScreen, isLoggedIn]);
+  /* eslint-enable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
+
   if (!isLoggedIn) {
     return <Auth onLoginSuccess={handleLoginSuccess} />;
   }
@@ -123,6 +170,7 @@ function App() {
         <NotificationCenter
           className="notification-center--global"
           onWorkspaceUpdate={fetchWorkspaces}
+          onOpenNotification={handleOpenNotification}
         />
       )}
 
@@ -134,11 +182,23 @@ function App() {
         />
       )}
 
+      {currentScreen === 'my-tasks' && (
+        <MyTasks
+          tasks={allTasks}
+          user={user}
+          workspaces={workspaces}
+          onOpenInWorkspace={openTaskInWorkspace}
+        />
+      )}
+
       {currentScreen === 'tasks' && (
         <Dashboard
           toggleSidebar={() => setSidebarOpen(!sidebarOpen)}
           activeWorkspace={activeWorkspace}
           onWorkspaceUpdate={fetchWorkspaces}
+          focusTaskId={focusTaskId}
+          onFocusTaskConsumed={() => setFocusTaskId(null)}
+          onOpenNotification={handleOpenNotification}
         />
       )}
 

@@ -3,7 +3,9 @@ import { apiFetch } from '../services/api';
 import { useWorkspaceSocket } from '../hooks/useWorkspaceSocket';
 import './NotificationCenter.css';
 
-function NotificationCenter({ onWorkspaceUpdate, className = '' }) {
+const OPENABLE_TYPES = ['task_assigned', 'comment_mention', 'task_comment'];
+
+function NotificationCenter({ onWorkspaceUpdate, onOpenNotification, className = '' }) {
   const [notifications, setNotifications] = useState([]);
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -100,7 +102,15 @@ function NotificationCenter({ onWorkspaceUpdate, className = '' }) {
     if (!notification.read && notification.type !== 'workspace_invite') {
       await markAsRead(notification._id);
     }
+
+    if (OPENABLE_TYPES.includes(notification.type) && onOpenNotification) {
+      onOpenNotification(notification);
+      setIsOpen(false);
+    }
   };
+
+  const canOpenTask = (notification) =>
+    OPENABLE_TYPES.includes(notification.type) && Boolean(notification.task);
 
   const getNotificationIcon = (type) => {
     if (type === 'workspace_invite') return '🤝';
@@ -179,8 +189,18 @@ function NotificationCenter({ onWorkspaceUpdate, className = '' }) {
                   className={[
                     'notification-item',
                     !notification.read && 'notification-item--unread',
+                    canOpenTask(notification) && 'notification-item--clickable',
                   ].filter(Boolean).join(' ')}
                   onClick={() => handleNotificationClick(notification)}
+                  role={canOpenTask(notification) ? 'button' : undefined}
+                  tabIndex={canOpenTask(notification) ? 0 : undefined}
+                  onKeyDown={(event) => {
+                    if (!canOpenTask(notification)) return;
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault();
+                      handleNotificationClick(notification);
+                    }
+                  }}
                 >
                   <div className="notification-item-icon">
                     {getNotificationIcon(notification.type)}

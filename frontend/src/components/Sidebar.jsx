@@ -35,6 +35,12 @@ function Sidebar({ onLogout, isOpen, currentScreen, onScreenChange, workspaces, 
           <span className="nav-icon">🏠</span> Home Hub
         </div>
         <div
+          className={`nav-item ${currentScreen === 'my-tasks' ? 'active' : ''}`}
+          onClick={() => onScreenChange('my-tasks')}
+        >
+          <span className="nav-icon">✅</span> My Tasks
+        </div>
+        <div
           className={`nav-item ${currentScreen === 'settings' ? 'active' : ''}`}
           onClick={() => onScreenChange('settings')}
         >
