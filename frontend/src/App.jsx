@@ -174,37 +174,39 @@ function App() {
         />
       )}
 
-      {currentScreen === 'home' && (
-        <HomeHub
-          changeSubScreen={setCurrentScreen}
-          tasks={allTasks}
-          user={user}
-        />
-      )}
+      <div className="screen-stage" key={currentScreen}>
+        {currentScreen === 'home' && (
+          <HomeHub
+            changeSubScreen={setCurrentScreen}
+            tasks={allTasks}
+            user={user}
+          />
+        )}
 
-      {currentScreen === 'my-tasks' && (
-        <MyTasks
-          tasks={allTasks}
-          user={user}
-          workspaces={workspaces}
-          onOpenInWorkspace={openTaskInWorkspace}
-        />
-      )}
+        {currentScreen === 'my-tasks' && (
+          <MyTasks
+            tasks={allTasks}
+            user={user}
+            workspaces={workspaces}
+            onOpenInWorkspace={openTaskInWorkspace}
+          />
+        )}
 
-      {currentScreen === 'tasks' && (
-        <Dashboard
-          toggleSidebar={() => setSidebarOpen(!sidebarOpen)}
-          activeWorkspace={activeWorkspace}
-          onWorkspaceUpdate={fetchWorkspaces}
-          focusTaskId={focusTaskId}
-          onFocusTaskConsumed={() => setFocusTaskId(null)}
-          onOpenNotification={handleOpenNotification}
-        />
-      )}
+        {currentScreen === 'tasks' && (
+          <Dashboard
+            toggleSidebar={() => setSidebarOpen(!sidebarOpen)}
+            activeWorkspace={activeWorkspace}
+            onWorkspaceUpdate={fetchWorkspaces}
+            focusTaskId={focusTaskId}
+            onFocusTaskConsumed={() => setFocusTaskId(null)}
+            onOpenNotification={handleOpenNotification}
+          />
+        )}
 
-      {currentScreen === 'settings' && (
-        <ProfileSettings user={user} onUserUpdate={handleUserUpdate} />
-      )}
+        {currentScreen === 'settings' && (
+          <ProfileSettings user={user} onUserUpdate={handleUserUpdate} />
+        )}
+      </div>
     </div>
   );
 }

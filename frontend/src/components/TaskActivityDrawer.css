@@ -23,7 +23,7 @@
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  animation: drawerEnter 0.3s var(--ease-out);
+  animation: drawerEnter 0.38s var(--ease-soft);
 }
 
 .task-drawer-header {
@@ -364,8 +364,14 @@
 }
 
 @keyframes drawerEnter {
-  from { opacity: 0; transform: translateX(40px); }
-  to { opacity: 1; transform: translateX(0); }
+  from {
+    opacity: 0;
+    transform: translateX(56px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }
 
 @media (max-width: 640px) {
