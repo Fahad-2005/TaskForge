@@ -41,6 +41,12 @@ function Sidebar({ onLogout, isOpen, currentScreen, onScreenChange, workspaces, 
           <span className="nav-icon">✅</span> My Tasks
         </div>
         <div
+          className={`nav-item ${currentScreen === 'ai-chat' ? 'active' : ''}`}
+          onClick={() => onScreenChange('ai-chat')}
+        >
+          <span className="nav-icon">✨</span> AI Chat
+        </div>
+        <div
           className={`nav-item ${currentScreen === 'settings' ? 'active' : ''}`}
           onClick={() => onScreenChange('settings')}
         >

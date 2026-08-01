@@ -4,6 +4,7 @@ import Sidebar from './components/Sidebar';
 import Dashboard from './components/Dashboard';
 import HomeHub from './components/HomeHub';
 import MyTasks from './components/MyTasks';
+import StreamingChat from './components/StreamingChat';
 import ProfileSettings from './components/ProfileSettings';
 import NotificationCenter from './components/NotificationCenter';
 import { apiFetch } from './services/api';
@@ -191,6 +192,8 @@ function App() {
             onOpenInWorkspace={openTaskInWorkspace}
           />
         )}
+
+        {currentScreen === 'ai-chat' && <StreamingChat />}
 
         {currentScreen === 'tasks' && (
           <Dashboard
