@@ -5,13 +5,15 @@ const { getWorkspaceForUser } = require('./middleware/workspaceAccess');
 let io;
 
 function initializeSocket(httpServer) {
-  const allowedOrigin = process.env.CLIENT_URL || 'http://localhost:5173';
+  const rawOrigins = process.env.CLIENT_URL || 'http://localhost:5173';
+  const allowedOrigins = rawOrigins.split(',').map((o) => o.trim()).filter(Boolean);
   const { Server } = require('socket.io');
 
   io = new Server(httpServer, {
     cors: {
-      origin: allowedOrigin,
+      origin: allowedOrigins.length === 1 ? allowedOrigins[0] : allowedOrigins,
       methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
+      credentials: true,
     },
   });
 

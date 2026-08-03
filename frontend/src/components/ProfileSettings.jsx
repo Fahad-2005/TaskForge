@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useTheme } from '../context/ThemeContext';
+import { API_BASE, getToken } from '../services/api';
 import './ProfileSettings.css';
 
 function ProfileSettings({ user, onUserUpdate }) {
@@ -17,9 +18,13 @@ function ProfileSettings({ user, onUserUpdate }) {
     setIsSaving(true);
 
     try {
-      const response = await fetch(`http://localhost:5000/api/auth/profile/${userId}`, {
+      const headers = { 'Content-Type': 'application/json' };
+      const token = getToken();
+      if (token) headers.Authorization = `Bearer ${token}`;
+
+      const response = await fetch(`${API_BASE}/auth/profile/${userId}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({ name: name.trim(), email: email.trim() }),
       });
 

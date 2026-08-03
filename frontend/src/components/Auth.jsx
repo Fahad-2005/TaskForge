@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { API_BASE } from '../services/api';
 import './Auth.css';
 
 function Auth({ onLoginSuccess }) {
@@ -14,11 +15,11 @@ function Auth({ onLoginSuccess }) {
     setErrorMessage('');
     setIsLoading(true);
 
-    const endpoint = isLoginView ? '/api/auth/login' : '/api/auth/register';
+    const endpoint = isLoginView ? '/auth/login' : '/auth/register';
     const payload = isLoginView ? { email, password } : { name, email, password };
 
     try {
-      const response = await fetch(`http://localhost:5000${endpoint}`, {
+      const response = await fetch(`${API_BASE}${endpoint}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),

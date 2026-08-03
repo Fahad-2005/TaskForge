@@ -1,4 +1,8 @@
-export const API_BASE = 'http://localhost:5000/api';
+const API_ORIGIN = (import.meta.env.VITE_API_URL || 'http://localhost:5000').replace(/\/$/, '');
+
+export const API_BASE = `${API_ORIGIN}/api`;
+export const SOCKET_URL = API_ORIGIN;
+export const CHAT_API_URL = `${API_ORIGIN}/api/chat`;
 
 export function getToken() {
   return localStorage.getItem('token');

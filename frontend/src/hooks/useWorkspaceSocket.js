@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { io } from 'socket.io-client';
-import { getToken } from '../services/api';
+import { getToken, SOCKET_URL } from '../services/api';
 
 export function useWorkspaceSocket(workspaceId, handlers = {}) {
   const socketRef = useRef(null);
@@ -14,7 +14,7 @@ export function useWorkspaceSocket(workspaceId, handlers = {}) {
     const token = getToken();
     if (!token) return undefined;
 
-    const socket = io('http://localhost:5000', {
+    const socket = io(SOCKET_URL, {
       auth: { token },
       transports: ['websocket', 'polling'],
     });

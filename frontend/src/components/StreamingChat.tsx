@@ -8,6 +8,7 @@ import {
   useRef,
   useState,
 } from 'react';
+import { CHAT_API_URL } from '../services/api';
 import './StreamingChat.css';
 
 function getMessageText(message: {
@@ -27,7 +28,7 @@ export default function StreamingChat() {
   const transport = useMemo(
     () =>
       new DefaultChatTransport({
-        api: '/api/chat',
+        api: CHAT_API_URL,
       }),
     [],
   );

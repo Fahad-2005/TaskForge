@@ -7,7 +7,7 @@ import MyTasks from './components/MyTasks';
 import StreamingChat from './components/StreamingChat';
 import ProfileSettings from './components/ProfileSettings';
 import NotificationCenter from './components/NotificationCenter';
-import { apiFetch } from './services/api';
+import { apiFetch, API_BASE } from './services/api';
 
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -27,7 +27,7 @@ function App() {
     const userId = currentUser.id || currentUser._id;
 
     try {
-      const response = await fetch(`http://localhost:5000/api/workspaces/user/${userId}`);
+      const response = await fetch(`${API_BASE}/workspaces/user/${userId}`);
       if (response.ok) {
         const data = await response.json();
         setWorkspaces(data);
@@ -74,7 +74,7 @@ function App() {
     if (!userId) return;
 
     try {
-      const response = await fetch('http://localhost:5000/api/workspaces', {
+      const response = await fetch(`${API_BASE}/workspaces`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: workspaceName, ownerId: userId }),

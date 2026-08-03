@@ -4,7 +4,7 @@ import TimelineView from './TimelineView';
 import NotificationCenter from './NotificationCenter';
 import TaskActivityDrawer from './TaskActivityDrawer';
 import { toInputDateValue } from '../utils/dateHelpers';
-import { apiFetch } from '../services/api';
+import { apiFetch, API_BASE, getToken } from '../services/api';
 import { useWorkspaceSocket } from '../hooks/useWorkspaceSocket';
 import './Dashboard.css';
 
@@ -101,9 +101,12 @@ function Dashboard({
     setInviteSuccess('');
     setInviteError('');
     try {
-      const response = await fetch(`http://localhost:5000/api/workspaces/${activeWorkspace._id}/invite`, {
+      const response = await fetch(`${API_BASE}/workspaces/${activeWorkspace._id}/invite`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(getToken() ? { Authorization: `Bearer ${getToken()}` } : {}),
+        },
         body: JSON.stringify({ email: inviteEmail, inviterId: currentUserId }),
       });
       const data = await response.json();
