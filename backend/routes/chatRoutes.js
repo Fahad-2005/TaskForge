@@ -1,6 +1,5 @@
 /**
- * TaskForge AI chat — Groq streaming (moved here so production works on Render/Railway).
- * Local Vite middleware can still exist, but the app now calls this Express route.
+ * TaskForge AI chat — Groq streaming for useChat (AI SDK UI message stream).
  */
 const express = require('express');
 
@@ -18,11 +17,16 @@ router.post('/', async (req, res) => {
   try {
     if (!process.env.GROQ_API_KEY) {
       return res.status(500).json({
-        error: 'GROQ_API_KEY is missing on the server. Add it to backend/.env',
+        error: 'GROQ_API_KEY is missing on the server. Add it in Render Environment.',
       });
     }
 
-    const { streamText, convertToModelMessages } = await import('ai');
+    const {
+      streamText,
+      convertToModelMessages,
+      pipeUIMessageStreamToResponse,
+      toUIMessageStream,
+    } = await import('ai');
     const { groq } = await import('@ai-sdk/groq');
 
     const messages = req.body?.messages || [];
@@ -35,7 +39,15 @@ router.post('/', async (req, res) => {
       maxOutputTokens: 1200,
     });
 
-    result.pipeUIMessageStreamToResponse(res);
+    // Official Express pattern for AI SDK useChat / DefaultChatTransport
+    await pipeUIMessageStreamToResponse({
+      response: res,
+      stream: toUIMessageStream({ stream: result.stream }),
+      headers: {
+        'X-Accel-Buffering': 'no',
+        'Cache-Control': 'no-cache, no-transform',
+      },
+    });
   } catch (error) {
     console.error('[chat]', error);
     if (!res.headersSent) {

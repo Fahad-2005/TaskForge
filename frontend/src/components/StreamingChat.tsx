@@ -200,7 +200,8 @@ export default function StreamingChat() {
 
           {error && (
             <div className="streaming-chat-error" role="alert">
-              Something went wrong while streaming. Check your API key and try again.
+              Something went wrong while streaming.
+              {error.message ? ` (${error.message})` : ' Check your API key / backend and try again.'}
             </div>
           )}
 
