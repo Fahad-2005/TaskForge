@@ -30,7 +30,7 @@
 - **My Tasks** — everything assigned to you across all workspaces
 - Dark / light appearance toggle
 
-### AI Chat (FE-06)
+### AI Chat 
 - Streaming TaskForge AI assistant (Groq)
 - Natural language task planning help
 - Stop mid-stream, smart auto-scroll, Jump to latest
@@ -63,7 +63,7 @@ TaskForge/
 │   │   ├── context/          # Theme
 │   │   ├── hooks/            # Socket hooks
 │   │   ├── services/api.js   # API + chat/socket base URLs
-│   │   ├── app/api/chat/     # FE-06 route module (Vite middleware / docs)
+│   │   ├── app/api/chat/     # route module (Vite middleware / docs)
 │   │   └── lib/ai-config.ts  # AI model + system prompt
 │   ├── vercel.json
 │   └── .env.example
