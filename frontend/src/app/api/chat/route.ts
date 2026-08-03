@@ -36,5 +36,8 @@ export async function POST(req: Request) {
   });
 
   // SSE UI message data stream consumed by useChat / DefaultChatTransport
-  return result.toUIMessageStreamResponse();
+  return result.toUIMessageStreamResponse({
+    onError: (error) =>
+      error instanceof Error ? error.message : 'Chat stream failed',
+  });
 }

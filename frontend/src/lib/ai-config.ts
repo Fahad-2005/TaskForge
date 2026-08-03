@@ -4,8 +4,8 @@
  * Never expose GROQ_API_KEY through this module to the browser.
  */
 export const aiConfig = {
-  /** Free-tier Groq model — fast + solid for task planning */
-  model: 'llama-3.3-70b-versatile' as const,
+  /** Free-tier Groq model — fast + reliable */
+  model: 'llama-3.1-8b-instant' as const,
   temperature: 0.4,
   /** Mapped to streamText `maxOutputTokens` in the API route. */
   maxTokens: 1200,
