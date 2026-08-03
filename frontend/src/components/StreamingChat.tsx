@@ -9,6 +9,10 @@ import {
   useState,
 } from 'react';
 import { CHAT_API_URL } from '../services/api';
+import {
+  loadSessionChatMessages,
+  saveSessionChatMessages,
+} from '../utils/chatSession';
 import './StreamingChat.css';
 
 function getMessageText(message: {
@@ -24,7 +28,19 @@ function getMessageText(message: {
   return typeof message.content === 'string' ? message.content : '';
 }
 
+function getCurrentUserId() {
+  try {
+    const user = JSON.parse(localStorage.getItem('user') || 'null');
+    return String(user?.id || user?._id || 'anon');
+  } catch {
+    return 'anon';
+  }
+}
+
 export default function StreamingChat() {
+  const userId = useMemo(() => getCurrentUserId(), []);
+  const initialMessages = useMemo(() => loadSessionChatMessages(userId), [userId]);
+
   const transport = useMemo(
     () =>
       new DefaultChatTransport({
@@ -33,14 +49,17 @@ export default function StreamingChat() {
     [],
   );
 
-  const { messages, sendMessage, status, stop, error, clearError } = useChat({
+  const { messages, setMessages, sendMessage, status, stop, error, clearError } = useChat({
+    id: `taskforge-ai-${userId}`,
     transport,
+    messages: initialMessages,
   });
 
   const [input, setInput] = useState('');
   const [pinnedToBottom, setPinnedToBottom] = useState(true);
   const [showJump, setShowJump] = useState(false);
   const [stoppedEarly, setStoppedEarly] = useState(false);
+  const restoredRef = useRef(false);
 
   const scrollerRef = useRef<HTMLDivElement | null>(null);
   const bottomRef = useRef<HTMLDivElement | null>(null);
@@ -50,6 +69,19 @@ export default function StreamingChat() {
     !stoppedEarly && (status === 'submitted' || status === 'streaming');
   const isThinking = !stoppedEarly && status === 'submitted';
   const isStreaming = !stoppedEarly && status === 'streaming';
+
+  useEffect(() => {
+    if (restoredRef.current) return;
+    restoredRef.current = true;
+    const saved = loadSessionChatMessages(userId);
+    if (saved.length > 0 && messages.length === 0) {
+      setMessages(saved);
+    }
+  }, [userId, messages.length, setMessages]);
+
+  useEffect(() => {
+    saveSessionChatMessages(messages, userId);
+  }, [messages, userId]);
 
   useEffect(() => {
     if (status === 'ready' || status === 'error') {
@@ -103,6 +135,12 @@ export default function StreamingChat() {
     setStoppedEarly(true);
   };
 
+  const onClearChat = () => {
+    setMessages([]);
+    saveSessionChatMessages([], userId);
+    clearError?.();
+  };
+
   return (
     <div className="streaming-chat main-content">
       <div className="streaming-chat-shell">
@@ -114,12 +152,19 @@ export default function StreamingChat() {
               Plan tasks, break work down, and get structured suggestions with live token streaming.
             </p>
           </div>
-          <div className={`streaming-chat-status streaming-chat-status--${stoppedEarly ? 'ready' : status}`}>
-            <span className="streaming-chat-status-dot" />
-            {(stoppedEarly || status === 'ready') && 'Ready'}
-            {!stoppedEarly && status === 'submitted' && 'Thinking'}
-            {!stoppedEarly && status === 'streaming' && 'Streaming'}
-            {!stoppedEarly && status === 'error' && 'Error'}
+          <div className="streaming-chat-header-actions">
+            {messages.length > 0 && (
+              <button type="button" className="streaming-chat-clear" onClick={onClearChat}>
+                Clear chat
+              </button>
+            )}
+            <div className={`streaming-chat-status streaming-chat-status--${stoppedEarly ? 'ready' : status}`}>
+              <span className="streaming-chat-status-dot" />
+              {(stoppedEarly || status === 'ready') && 'Ready'}
+              {!stoppedEarly && status === 'submitted' && 'Thinking'}
+              {!stoppedEarly && status === 'streaming' && 'Streaming'}
+              {!stoppedEarly && status === 'error' && 'Error'}
+            </div>
           </div>
         </header>
 

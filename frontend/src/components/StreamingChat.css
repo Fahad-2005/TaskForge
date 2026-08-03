@@ -53,6 +53,30 @@
   line-height: 1.55;
 }
 
+.streaming-chat-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.streaming-chat-clear {
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  background: transparent;
+  color: #94a3b8;
+  border-radius: 999px;
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.streaming-chat-clear:hover {
+  color: #e2e8f0;
+  border-color: rgba(148, 163, 184, 0.45);
+}
+
 .streaming-chat-status {
   display: inline-flex;
   align-items: center;

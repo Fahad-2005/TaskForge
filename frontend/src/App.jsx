@@ -8,6 +8,7 @@ import StreamingChat from './components/StreamingChat';
 import ProfileSettings from './components/ProfileSettings';
 import NotificationCenter from './components/NotificationCenter';
 import { apiFetch, API_BASE } from './services/api';
+import { clearAllSessionChatMessages } from './utils/chatSession';
 
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -98,6 +99,9 @@ function App() {
   };
 
   const handleLogout = () => {
+    clearAllSessionChatMessages();
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
     setIsLoggedIn(false);
     setUser(null);
   };
