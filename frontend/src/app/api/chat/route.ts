@@ -33,7 +33,7 @@ export async function POST(req: Request) {
       generateTaskCard: {
         description:
           'Generates a structured task breakdown card for project planning and task management.',
-        parameters: z.object({
+        inputSchema: z.object({
           projectTitle: z.string().describe('Title of the feature or epic'),
           priority: z
             .enum(['Low', 'Medium', 'High', 'Urgent'])
@@ -49,12 +49,11 @@ export async function POST(req: Request) {
             }),
           ),
         }),
-        execute: async (args) => {
-          // Server-side tool execution return payload
+        execute: async (input) => {
           return {
             success: true,
             timestamp: new Date().toISOString(),
-            data: args,
+            data: input,
           };
         },
       },
