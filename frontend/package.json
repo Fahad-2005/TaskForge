@@ -14,9 +14,11 @@
     "@ai-sdk/openai": "^4.0.27",
     "@ai-sdk/react": "^4.0.50",
     "ai": "^7.0.47",
+    "lucide-react": "^1.28.0",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
-    "socket.io-client": "^4.8.3"
+    "socket.io-client": "^4.8.3",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

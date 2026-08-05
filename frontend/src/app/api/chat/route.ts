@@ -4,13 +4,9 @@ import {
   streamText,
   type UIMessage,
 } from 'ai';
+import { z } from 'zod';
 import { aiConfig } from '../../../lib/ai-config';
 
-/**
- * Next.js-style App Router chat handler (FE-06).
- * In TaskForge (Vite), this module is mounted by the Vite AI chat middleware
- * so GROQ_API_KEY stays server-side and never ships to the browser bundle.
- */
 export const maxDuration = 30;
 
 export async function POST(req: Request) {
@@ -33,9 +29,38 @@ export async function POST(req: Request) {
     messages: await convertToModelMessages(messages),
     temperature: aiConfig.temperature,
     maxOutputTokens: aiConfig.maxTokens,
+    tools: {
+      generateTaskCard: {
+        description:
+          'Generates a structured task breakdown card for project planning and task management.',
+        parameters: z.object({
+          projectTitle: z.string().describe('Title of the feature or epic'),
+          priority: z
+            .enum(['Low', 'Medium', 'High', 'Urgent'])
+            .describe('Overall priority level'),
+          totalHours: z.number().describe('Total estimated completion time in hours'),
+          subtasks: z.array(
+            z.object({
+              title: z.string().describe('Actionable subtask name'),
+              estimatedHours: z.number().describe('Hours estimated for this subtask'),
+              status: z
+                .enum(['To Do', 'In Progress', 'In Review', 'Complete'])
+                .default('To Do'),
+            }),
+          ),
+        }),
+        execute: async (args) => {
+          // Server-side tool execution return payload
+          return {
+            success: true,
+            timestamp: new Date().toISOString(),
+            data: args,
+          };
+        },
+      },
+    },
   });
 
-  // SSE UI message data stream consumed by useChat / DefaultChatTransport
   return result.toUIMessageStreamResponse({
     onError: (error) =>
       error instanceof Error ? error.message : 'Chat stream failed',
