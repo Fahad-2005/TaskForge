@@ -5,7 +5,7 @@
  */
 export const aiConfig = {
   /** Upgraded to Llama 3.3 70B for strict Zod tool-calling support */
-  model: 'llama-3.3-70b-versatile' as const,
+  model: 'llama3-8b-8192' as const,
   temperature: 0.4,
   /** Mapped to streamText `maxOutputTokens` in the API route. */
   maxTokens: 1200,
