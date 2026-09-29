@@ -24,7 +24,7 @@ export async function POST(req: Request) {
   const messages = (body?.messages ?? []) as UIMessage[];
 
   const result = streamText({
-    model: groq('llama3-8b-8192'),
+    model: groq('openai/gpt-oss-20b'),
     system: aiConfig.systemPrompt,
     messages: await convertToModelMessages(messages),
     temperature: aiConfig.temperature,

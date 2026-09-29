@@ -58,7 +58,7 @@ router.post('/', async (req, res) => {
     const { groq } = await import('@ai-sdk/groq');
 
 
-    const modelId = process.env.GROQ_MODEL || 'llama3-8b-8192';
+    const modelId = process.env.GROQ_MODEL || 'openai/gpt-oss-20b';
     const messages = toModelMessages(req.body?.messages || []);
 
     if (messages.length === 0) {
