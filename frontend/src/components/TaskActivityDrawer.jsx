@@ -100,6 +100,7 @@ function TaskActivityDrawer({ task, workspaceId, members = [], onClose, onEdit }
         current.some((item) => item._id === activity._id) ? current : [activity, ...current]
       );
     },
+    'workspace:members_updated': (updatedMembers) => setMembers(updatedMembers),
     connect: loadDrawer,
   });
 

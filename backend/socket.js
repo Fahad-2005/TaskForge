@@ -6,6 +6,8 @@ let io;
 // In-memory store for active users per workspace room: { workspaceId: Map(userId -> { userId, name, socketId }) }
 const workspacePresence = new Map();
 
+
+
 function initializeSocket(httpServer) {
   const rawOrigins = process.env.CLIENT_URL || 'http://localhost:5173';
   const allowedOrigins = rawOrigins.split(',').map((o) => o.trim()).filter(Boolean);
@@ -119,4 +121,11 @@ function emitToUser(userId, event, payload) {
   }
 }
 
-module.exports = { initializeSocket, emitToWorkspace, emitToUser };
+function emitMemberJoined(workspaceId, updatedMembers) {
+  if (io && workspaceId) {
+    io.to(`workspace:${workspaceId}`).emit('workspace:members_updated', updatedMembers);
+  }
+}
+
+
+module.exports = { initializeSocket, emitToWorkspace, emitToUser, emitMemberJoined };

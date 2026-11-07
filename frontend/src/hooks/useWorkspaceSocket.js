@@ -2,10 +2,13 @@ import { useEffect, useRef } from 'react';
 import { io } from 'socket.io-client';
 import { getToken, SOCKET_URL } from '../services/api';
 
+
+
 export function useWorkspaceSocket(workspaceId, handlers = {}) {
   const socketRef = useRef(null);
   const handlersRef = useRef(handlers);
 
+  
   useEffect(() => {
     handlersRef.current = handlers;
   }, [handlers]);
