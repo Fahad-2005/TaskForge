@@ -31,6 +31,7 @@ function TaskActivityDrawer({ task, workspaceId, members = [], onClose, onEdit }
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [mentionQuery, setMentionQuery] = useState(null);
+  const [activeUsers, setActiveUsers] = useState([]); // 🚀 Active Users state
   const textareaRef = useRef(null);
   const currentUser = JSON.parse(localStorage.getItem('user')) || {};
   const currentUserId = currentUser.id || currentUser._id;
@@ -79,6 +80,9 @@ function TaskActivityDrawer({ task, workspaceId, members = [], onClose, onEdit }
   }, [onClose]);
 
   useWorkspaceSocket(workspaceId, {
+    'presence:update': (users) => {
+      setActiveUsers(users); // 🚀 Update active presence list
+    },
     'comment:created': (comment) => {
       if (String(comment.task) !== task._id) return;
       setComments((current) =>
@@ -174,6 +178,37 @@ function TaskActivityDrawer({ task, workspaceId, members = [], onClose, onEdit }
             <button type="button" className="task-drawer-close" onClick={onClose} aria-label="Close">×</button>
           </div>
         </header>
+
+        {/* 🚀 Active Team Members Bar */}
+        {activeUsers.length > 0 && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 16px', background: '#f1f5f9', borderRadius: '6px', margin: '8px 16px' }}>
+            <span style={{ fontSize: '12px', fontWeight: 600, color: '#475569' }}>Active Now:</span>
+            <div style={{ display: 'flex', gap: '4px' }}>
+              {activeUsers.map((u) => (
+                <span
+                  key={u.userId}
+                  title={u.name}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    width: '24px',
+                    height: '24px',
+                    borderRadius: '50%',
+                    background: '#4f46e5',
+                    color: '#fff',
+                    fontSize: '11px',
+                    fontWeight: 'bold',
+                    position: 'relative'
+                  }}
+                >
+                  {u.name?.charAt(0).toUpperCase()}
+                  <span style={{ position: 'absolute', bottom: 0, right: 0, width: '6px', height: '6px', borderRadius: '50%', background: '#22c55e', border: '1px solid #fff' }} />
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className="task-drawer-summary">
           <span><strong>Status</strong>{task.status}</span>

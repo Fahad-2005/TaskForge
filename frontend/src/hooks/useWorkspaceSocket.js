@@ -28,6 +28,7 @@ export function useWorkspaceSocket(workspaceId, handlers = {}) {
       'comment:deleted',
       'activity:created',
       'notification:created',
+      'presence:update', // 🚀 Added Presence Tracking event
     ];
 
     events.forEach((event) => {
