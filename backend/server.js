@@ -1,6 +1,4 @@
 // FORCED DNS RESOLVER FIX FOR WINDOWS/NODE NETWORKS
-const dns = require('node:dns/promises');
-dns.setServers(['1.1.1.1', '8.8.8.8']);
 
 const express = require('express');
 const http = require('http');
